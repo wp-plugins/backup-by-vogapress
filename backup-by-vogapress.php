@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3
+ * Version: 0.3.1
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service.  Your website is easily recoverable from disaters with just a few clicks.
  * Author: VOGA Press
@@ -352,7 +352,7 @@ class VPBackup
 		if ( $this->verify_request() ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$export = new VPBFiles();
-			$export->download( $_GET['file'] );
+			$export->download( $_REQUEST['file'] );
 			wp_die();
 		}
 	}

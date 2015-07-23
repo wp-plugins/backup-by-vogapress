@@ -1,17 +1,17 @@
 === Plugin Name ===
 Contributors: vogapress
-Tags: backup, WordPress backup, back up, full backup, replicate, restore, restoration, duplicate, snapshot, multisite, file, db, database, storage, cloud storage
+Tags: backup, WordPress backup, WP backup, back up, full backup, database backup, files backup, website backup, wooCommerce backup, wooCommerce, replicate, restore, restoration, duplicate, snapshot, multisite, file, db, database, storage, cloud storage
 Requires at least: 3.0.1
 Tested up to: 4.2.2
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Simplest way to manage your backups with VOGAPress cloud service.  Your website is easily recoverable from disaters with just a few clicks.
+Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
 
 == Description ==
 
-Do you have an adequate WordPress backup strategy to ensure you can recover from disasters and hacks?  While hosting companies often offer backup solutions to recover from hardware failure, their offerings are basic replicate and restore functions without monitoring the states of the files.  This makes it harder to detect what and when files are messed up by hackers.
+Do you have an adequate WordPress backup strategy to ensure you can recover from disasters and hacks?  While hosting companies often offer backup solutions to recover from hardware failure, their offerings are basic replicate and restore functions without monitoring the states of the files.  This makes it harder to detect what and when files are tempered by hackers.
 
 Backup by VOGAPress is designed to help manage your WordPress backups by giving you more insights to the files.  It's a cloud backup service that offers to keep track and notifiy you of the file changes, and, an easy user interface to visually compare files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
 
@@ -25,11 +25,12 @@ Backup By VOGAPress offers these goodies:
 
 *   Backups are stored in multiple datacenters, your data is always online
 *   Automated easy restore, 2-clicks to start the process
-*   21 days of backup 
-*   Works with Single and Multisite WordPress
+*   30 days of backup 
+*   Works with Single, Multisite WordPress, and wooCommerce
 *   Review file changes with syntax and difference highlighting
 *   Email notification to keep you inform of the statuses
 *   Low server requirements and efficent use of bandwidths, does not require Cron to work.
+*   Works with complex directory structure and links
 *   Built-in server uptime monitoring
 *   Simple plan based on storage usage per WordPress instance 
 *   And many more ...
@@ -68,6 +69,9 @@ Yes, you will need to register an VOGAPress account to enable our cloud services
 6. Easy restore with a button click.
 
 == Changelog ==
+
+= 0.3.1 =
+* Removed link path restriction.
 
 = 0.3 =
 * First public release.

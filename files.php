@@ -65,7 +65,9 @@ class VPBFiles
 
 	private function get_absolute_path ($path)
 	{
-		$path = path_join( ABSPATH, $path );
+		if ( '/' !== substr($path,0,1) ) {
+			$path = path_join( ABSPATH, $path );
+		}
 		$path = str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, $path );
 		$parts = array_filter( explode( DIRECTORY_SEPARATOR, $path ), 'strlen' );
 		$absolutes = array();
@@ -78,7 +80,7 @@ class VPBFiles
 				$absolutes[] = $part;
 			}
 		}
-			return DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $absolutes );
+		return DIRECTORY_SEPARATOR . implode( DIRECTORY_SEPARATOR, $absolutes );
 	}
 
 	private function mkdir ($dir)
@@ -124,7 +126,7 @@ class VPBFiles
 
 		} else if ( ( $stats['mode'] & self::S_IFLNK ) == self::S_IFLNK ) {
 			if ( ! file_exists( $path ) ) {
-				symlink( $path, $this->get_absolute_path( $stats['link'] ) );
+				symlink( $path, $stats['link'] );
 			}
 			chmod( $path, $stats['mode'] & 0777 );
 			touch( $path, $stats['mtime'] );
@@ -136,16 +138,18 @@ class VPBFiles
 				touch( $path, $stats['mtime'] );
 			}
 			return true;
+
 		}
 		return false;
 	}
 
 	public function download ($file)
 	{
-		$fileName = path_join( ABSPATH, $file );
+		$fileName = $this->get_absolute_path( $file );
 		// validate file is within the wordpress directory
 		$realPath = realpath( $fileName );
-		if ( ! $realPath || ! preg_match( '#^'.ABSPATH.'#', $realPath ) || ! is_readable( $fileName ) ) {
+
+		if ( empty($file) || empty($realPath) || ! is_readable( $realPath ) ) {
 			header( 'HTTP/1.0 404 Not Found' );
 			return false ;
 		}
@@ -200,7 +204,7 @@ class VPBFiles
 		$stats['level'] = count( explode( DIRECTORY_SEPARATOR, $stats['path'] ) );
 		$stats['readable'] = is_readable( $path );
 		if ( ($stats['mode'] & VPBFiles::S_IFLNK) == VPBFiles::S_IFLNK ) {
-			$stats['link'] = readlink( $path );
+			$stats['link'] = $this->_file_stat(readlink( $path ), false);
 		} else if ( ($stats['mode'] & VPBFiles::S_IFSOCK) == VPBFiles::S_IFSOCK ) {
 			// nothing special
 		} else if ( ($stats['mode'] & VPBFiles::S_IFWHT) == VPBFiles::S_IFWHT ) {
