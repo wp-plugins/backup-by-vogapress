@@ -63,10 +63,10 @@ class VPBFiles
 		$this->deadline = ($_SERVER['REQUEST_TIME'] ? $_SERVER['REQUEST_TIME'] : time()) + ( ini_get( 'max_execution_time' ) == 0 ? 300 : ini_get( 'max_execution_time' ) ) - 1;
 	} // End __construct ()
 
-	private function get_absolute_path ($path)
+	private function get_absolute_path ($path, $parent = ABSPATH)
 	{
-		if ( '/' !== substr($path,0,1) ) {
-			$path = path_join( ABSPATH, $path );
+		if ( '/' !== substr( $path,0,1 ) ) {
+			$path = path_join( $parent, $path );
 		}
 		$path = str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, $path );
 		$parts = array_filter( explode( DIRECTORY_SEPARATOR, $path ), 'strlen' );
@@ -125,9 +125,10 @@ class VPBFiles
 			return true;
 
 		} else if ( ( $stats['mode'] & self::S_IFLNK ) == self::S_IFLNK ) {
-			if ( ! file_exists( $path ) ) {
-				symlink( $path, $stats['link'] );
+			if ( file_exists( $path ) ) {
+				unlink( $path );
 			}
+			symlink( $path, $stats['link']['path'] );
 			chmod( $path, $stats['mode'] & 0777 );
 			touch( $path, $stats['mtime'] );
 			return true;
@@ -163,37 +164,51 @@ class VPBFiles
 	}
 	public function glob( $path )
 	{
-		$count = 0;
-		$stack = [ $path ];
 		$this->basePath = $path;
 		clearstatcache();
-		$resume = ( $_REQUEST['start'] ? false : get_transient( $_REQUEST['jobId'] ) );
+		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( ! $resume ) {
 			echo '[';
+			$traveled = [ $path ];
+			$stack 	  = [ $path ];
+		} else {
+			$traveled = $resume['traveled'];
+			$stack    = $resume['stack'];
 		}
 		while ( $p = array_shift( $stack ) ) {
 			foreach ( scandir( $p ) as $file ) {
-				$count++ ;
-				$fullpath = path_join( $p, $file );
-				if ( is_dir( $fullpath ) ) {
-					if ( '.' == $file || '..' == $file ) {
-						continue;
-					} else {
+				if ( '.' == $file || '..' == $file ) {
+					continue;
+				}
+
+				$fullpath = $this->get_absolute_path( $file, $p );
+				$stat = $this->_file_stat( $fullpath );
+
+				if ( ( $stat['mode'] & self::S_IFDIR ) == self::S_IFDIR && ! in_array( $stat['path'], $traveled ) ) {
+					array_push( $stack, $fullpath );
+					array_push( $traveled, $fullpath );
+
+				} else if ( ( $stat['mode'] & self::S_IFLNK ) == self::S_IFLNK &&
+					($stat['link']['mode'] & self::S_IFDIR ) == self::S_IFDIR ) {
+
+					$link_fullpath = $this->get_absolute_path( $stat['link']['path'] );
+					if ( ! in_array( $link_fullpath, $traveled ) ) {
 						array_push( $stack, $fullpath );
+						array_push( $traveled, $fullpath );
+						array_push( $traveled, $link_fullpath );
 					}
 				}
-				$this->_file_stat( $fullpath );
-				if ( time() > $this->deadline ) {
-					set_transient($_REQUEST['jobId'],
-						array(
-							'offset' => $count,
-						), HOUR_IN_SECONDS
-					);
-					return false;
-				}
+			}
+			if ( Timeout::timeout() ) {
+				Timeout::store($_REQUEST['jobId'], array(
+					'traveled' 	=> $traveled,
+					'stack'		=> $stack,
+				));
+				return false;
 			}
 		}
 		echo ']';
+		Timeout::cleanup( $_REQUEST['jobId'] );
 		return true;
 	}
 	private function _file_stat( $path, $echo = true )
@@ -201,10 +216,11 @@ class VPBFiles
 		$statKeys = array( 'ino', 'uid', 'mode', 'gid', 'size', 'mtime' );
 		$stats = array_intersect_key( lstat( $path ), array_flip( $statKeys ) );
 		$stats['path'] = preg_replace( '#^'.$this->basePath.'#', '', $path );
-		$stats['level'] = count( explode( DIRECTORY_SEPARATOR, $stats['path'] ) );
+		$stats['level'] = count( array_filter( explode( DIRECTORY_SEPARATOR, $stats['path'] ) ) );
 		$stats['readable'] = is_readable( $path );
 		if ( ($stats['mode'] & VPBFiles::S_IFLNK) == VPBFiles::S_IFLNK ) {
-			$stats['link'] = $this->_file_stat(readlink( $path ), false);
+			$stats['link'] = $this->_file_stat( $this->get_absolute_path( readlink( $path ), dirname( $path ) ), false );
+
 		} else if ( ($stats['mode'] & VPBFiles::S_IFSOCK) == VPBFiles::S_IFSOCK ) {
 			// nothing special
 		} else if ( ($stats['mode'] & VPBFiles::S_IFWHT) == VPBFiles::S_IFWHT ) {

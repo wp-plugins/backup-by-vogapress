@@ -26,19 +26,18 @@ class Mysqlimport
 	private $host;
 	private $db;
 	private $fileName;
+	private $tableName;
 
 	private $fileHandler = null;
-	private $deadline;
 
 	public function __construct($db = DB_NAME, $host = DB_HOST, $type = 'mysql')
 	{
 		$this->db = $db;
 		$this->host = $host;
 		$this->dbType = strtolower( $type );
-		$this->deadline = time() + ( ini_get( 'max_execution_time' ) == 0 ? 300 : ini_get( 'max_execution_time' ) ) - 1;
 	}
 
-	public function start($filename = '')
+	public function start($filename = '', $tablename = '')
 	{
 		// Output file can be redefined here
 		if ( ! empty($filename) ) {
@@ -52,6 +51,7 @@ class Mysqlimport
 		if ( false === $this->fileHandler ) {
 			throw new Exception( 'Input file is not readable' );
 		}
+		$this->tableName = $tablename;
 		return $this->process();
 	}
 
@@ -60,15 +60,19 @@ class Mysqlimport
 		global $wpdb;
 		$query = '';
 		$offset = 0;
-		$resume = ( $_REQUEST['start'] ? false : get_transient( $_REQUEST['jobId'] ) );
+		$firstline = true;
+		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( $resume ) {
-			$fpos = $resume['offset'];
-			fseek( $this->fileHandler, $offset );
+			fseek( $this->fileHandler, $resume['offset'] );
 		}
 
-		while ( $this->deadline > time() && ($line = fgets( $this->fileHandler )) ) {
+		while ( ($line = fgets( $this->fileHandler )) ) {
 			if ( substr( $line, 0, 2 ) == '--' || trim( $line ) == '' ) {
 				continue;
+			}
+			if ( $resume && $firstline && 'INSERT' == substr( $line, 0, 6 ) ) {
+				$wpdb->query( 'LOCK TABLES `'.$this->tableName.'` WRITE;' );
+				$firstline = false;
 			}
 
 			$query .= $line;
@@ -79,17 +83,22 @@ class Mysqlimport
 				}
 				$query = '';
 				$offset = ftell( $this->fileHandler );
+				if ( Timeout::timeout() ) {
+					// timeout
+					Timeout::store($_REQUEST['jobId'], array(
+						'offset' => $offset,
+					));
+					break;
+				}
 			}
 		}
 		if ( ! $line ) {
+			// unlock first, and relock when continuing
+			$wpdb->query( 'UNLOCK TABLES;' );
 			// complete
+			Timeout::cleanup( $_REQUEST['jobId'] );
 			return true;
 		}
-		set_transient($_REQUEST['jobId'],
-			array(
-				'offset' => $offset,
-			), HOUR_IN_SECONDS
-		);
 		return false;
 	}
 }

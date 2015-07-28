@@ -62,7 +62,6 @@ class Mysqldump
 	private $dumpSettings = array();
 	private $version;
 	private $tableColumnTypes = array();
-	private $deadline;
 
 	/**
 	 * Constructor of Mysqldump. Note that in the case of an SQLite database
@@ -96,7 +95,7 @@ class Mysqldump
 		'databases' => false,
 		'add-drop-database' => false,
 		'skip-tz-utz' => false,
-		'no-autocommit' => true,
+		'no-autocommit' => false,
 		'default-character-set' => Mysqldump::UTF8,
 		/* deprecated */
 		'disable-foreign-keys-check' => true,
@@ -114,7 +113,6 @@ class Mysqldump
 
 		// Create a new compressManager to manage compressed output
 		$this->compressManager = CompressManagerFactory::create( $this->dumpSettings['compress'] );
-		$this->deadline = ($_SERVER['REQUEST_TIME'] ? $_SERVER['REQUEST_TIME'] : time()) + ( 0 == ini_get( 'max_execution_time' ) ? 300 : ini_get( 'max_execution_time' ) ) - 1;
 	}
 
 	/**
@@ -188,7 +186,7 @@ class Mysqldump
 		}
 
 		$this->overtime = false;
-		$this->resume = ( $_REQUEST['start'] ? false : get_transient( $_REQUEST['jobId'] ) );
+		$this->resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 
 		// Connect to database
 		$this->connect();
@@ -585,22 +583,21 @@ class Mysqldump
 					$lineSize = $this->compressManager->write( ';' . PHP_EOL );
 				}
 			}
-			$offset += $pageSize;
+			$offset += count( $resultSet );
 			if ( count( $resultSet ) && ! $onlyOnce ) {
 				$this->compressManager->write( ';' . PHP_EOL );
 			}
-			if ( time() > $this->deadline ) {
+			if ( count( $resultSet ) && Timeout::timeout() ) {
 				$this->overtime = true;
-				set_transient($_REQUEST['jobId'],
-					array(
-						'offset' => $offset,
-					), HOUR_IN_SECONDS
-				);
+				Timeout::store($_REQUEST['jobId'], array(
+					'offset' => $offset,
+				));
 				return false;
 			}
 		} while ( count( $resultSet ) );
 
 		$this->end_list_values( $tableName );
+		Timeout::cleanup( $_REQUEST['jobId'] );
 		return true;
 	}
 

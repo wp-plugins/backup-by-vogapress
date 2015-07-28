@@ -70,6 +70,10 @@ Yes, you will need to register an VOGAPress account to enable our cloud services
 
 == Changelog ==
 
+= 0.3.2 =
+* Support CloudFlare proxy.
+* Improve handling operational timeout.
+
 = 0.3.1 =
 * Removed link path restriction.
 

@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.1
+ * Version: 0.3.2
  * Plugin URI: http://vogapress.com/
- * Description: Simplest way to manage your backups with VOGAPress cloud service.  Your website is easily recoverable from disaters with just a few clicks.
+ * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
  * Author URI: http://vogapress.com/
  * Requires at least: 3.0.1
- * Tested up to: 4.2.2
+ * Tested up to: 4.2.3
  * Network: True
  *
  * Text Domain: backup-by-vogapress
@@ -28,6 +28,8 @@ namespace VPBackup ;
 if ( ! defined( 'ABSPATH' ) ) {
 		exit;
 }
+
+require(dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'timeout.php');
 
 class VPBackup
 {
@@ -87,8 +89,9 @@ class VPBackup
 	 * @since   0.3.0
 	 * @return  void
 	 */
-	public function __construct ( $version = '0.3.0' )
+	public function __construct ( $version = '0.3.2' )
 	{
+		Timeout::init();
 		$this->_version = $version;
 		$this->_token = 'backup-by-wordpress';
 		// Load plugin environment variables
@@ -281,13 +284,13 @@ class VPBackup
 	{
 		if ( $this->verify_request() && $this->verify_url( $_POST['url'] ) ) {
 			$tmp_name = path_join( sys_get_temp_dir(), 'vpb-' . $_REQUEST['jobId'] );
-			if ( $this->_get_remote_file( $_POST['url'], $tmp_name ) ) {
+			if ( ! $_REQUEST['start'] || $this->_get_remote_file( $_POST['url'], $tmp_name ) ) {
 
 				$byg_backup = get_site_option( self::OPTNAME, array() );
 				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ;
 				$import = new Mysqlimport();
 				try {
-					if ( $import->start( $tmp_name ) ) {
+					if ( $import->start( $tmp_name, $_REQUEST['path'] ) ) {
 						unlink( $tmp_name );
 						echo '1';
 					} else {
@@ -296,6 +299,7 @@ class VPBackup
 				} catch (Exception $e) {
 					echo '-2';
 				}
+				$byg_backup['mtime'] = time();
 				update_site_option( self::OPTNAME, $byg_backup );
 				wp_die();
 			} else {
@@ -436,7 +440,16 @@ class VPBackup
 	 * @return  boolean
 	 */
 	private function verify_ip() {
-		$ip = $this->_get_remote_ip();
+		// cloud flare proxy support
+		if ( isset($_SERVER['HTTP_CF_CONNECTING_IP']) ) {
+			$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+			require(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
+			if ( ! CloudFlareProxy::in_range_ip4( $_SERVER['REMOTE_ADDR'] ) ) {
+				return false;
+			}
+		} else {
+			$ip = $this->_get_remote_ip();
+		}
 		return ( in_array( $ip, $this->white_ips ) || in_array( $ip, gethostbynamel( self::ALLOWEDDOMAIN ) ) );
 	}
 
