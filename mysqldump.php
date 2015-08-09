@@ -249,6 +249,8 @@ class Mysqldump
 		}
 		// Close output file
 		$this->compressManager->close();
+
+		return ! $this->overtime ;  // did we finish ?
 	}
 
 	/**
@@ -828,7 +830,7 @@ class CompressNone extends CompressManagerFactory
 
 	public function open($filename)
 	{
-		$this->fileHandler = fopen( $filename, 'wb' );
+		$this->fileHandler = fopen( $filename, 'ab' );
 		if ( false === $this->fileHandler ) {
 			throw new Exception( 'Output file is not writable' );
 		}

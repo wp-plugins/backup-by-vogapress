@@ -2,7 +2,7 @@
 Contributors: vogapress
 Tags: backup, WordPress backup, WP backup, back up, full backup, database backup, files backup, website backup, wooCommerce backup, wooCommerce, replicate, restore, restoration, duplicate, snapshot, multisite, file, db, database, storage, cloud storage
 Requires at least: 3.0.1
-Tested up to: 4.2.2
+Tested up to: 4.2.4
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -15,7 +15,7 @@ Do you have an adequate WordPress backup strategy to ensure you can recover from
 
 Backup by VOGAPress is designed to help manage your WordPress backups by giving you more insights to the files.  It's a cloud backup service that offers to keep track and notifiy you of the file changes, and, an easy user interface to visually compare files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
 
-Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  *It's free to try during the beta period.  No credit card is required to register.*
+Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  *We offer a free tier personal plan and professional business plan.  No credit card is required to register.*
 
 See [VOGAPress](https://vogapress.com) for details.
 
@@ -28,7 +28,8 @@ Backup By VOGAPress offers these goodies:
 *   30 days of backup 
 *   Works with Single, Multisite WordPress, and wooCommerce
 *   Review file changes with syntax and difference highlighting
-*   Email notification to keep you inform of the statuses
+*   Email notification to keep you informed of the statuses
+*   Secured data transfer
 *   Low server requirements and efficent use of bandwidths, does not require Cron to work.
 *   Works with complex directory structure and links
 *   Built-in server uptime monitoring
@@ -47,6 +48,10 @@ Backup By VOGAPress offers these goodies:
 
 Your backup data is stored in multiple datacenters in the cloud.  They will always be available to access from our user interface for review and restore.
 
+= Is the data secured? =
+
+The data transfered between your server and VOGAPress data center are through secured HTTPs channels.  It does require your hosting server supports PHP Curl.
+
 = Does my server require special setup? =
 
 No, Backup by VOGAPress is designed to work in plenty of environments, consume very little storage and bandwidths.  It works in WordPress v3.0.1 or higher with PHP v5.2 or higher.
@@ -59,6 +64,10 @@ Yes, it does work in WordPress Multisite.  The plugin admin page is in the netwo
 
 Yes, you will need to register an VOGAPress account to enable our cloud services.  You may use your email or social account for the registration.  No credit card is requried to open an account.
 
+= Is there a free tier service plan to backup my personal WordPress website? =
+
+Yes, we offer a free tier service plan.  See [VOGAPress](https://vogapress.com) on the plan's features.  It's our way to say thank you for the wonderful WordPress community.
+
 == Screenshots ==
 
 1. Connect WordPress to VOGAPress with the Register button.
@@ -69,6 +78,10 @@ Yes, you will need to register an VOGAPress account to enable our cloud services
 6. Easy restore with a button click.
 
 == Changelog ==
+
+= 0.3.3 =
+* Support HTTPS data transfer.
+* Improved CloudFlare supports.
 
 = 0.3.2 =
 * Support CloudFlare proxy.

@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.2
+ * Version: 0.3.3
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
  * Author URI: http://vogapress.com/
  * Requires at least: 3.0.1
- * Tested up to: 4.2.3
+ * Tested up to: 4.2.4
  * Network: True
  *
  * Text Domain: backup-by-vogapress
@@ -33,9 +33,11 @@ require(dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'timeout.php');
 
 class VPBackup
 {
-	CONST VPURL 		= 'https://vogapress.com/';
+	//  CONST VPURL         = 'https://vogapress.com/';
+	CONST VPURL 		= 'http://mean.vogapress.com:3000/';
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
+	CONST VERSION		= '0.3.3';
 
 	/**
 	 * The single instance of WordPress_Plugin_Template.
@@ -81,6 +83,7 @@ class VPBackup
 	private $white_ips = array(
 	'45.55.87.153',
 	'45.55.237.104',
+	'104.131.73.27',
 	);
 
 	/**
@@ -89,7 +92,7 @@ class VPBackup
 	 * @since   0.3.0
 	 * @return  void
 	 */
-	public function __construct ( $version = '0.3.2' )
+	public function __construct ( $version = VPBackup::VERSION )
 	{
 		Timeout::init();
 		$this->_version = $version;
@@ -232,17 +235,36 @@ class VPBackup
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqldump.php' ;
 			global $wpdb;
 			$adapter = TypeAdapterFactory::create( 'mysql', $wpdb );
-			echo '[';
+
+			$filename = 'php://output';
+			if ( self::_is_curl_available() ) {
+				$filename = Timeout::get_tmp_name( $_REQUEST['jobId'] );
+			}
+			$handle = fopen( $filename, 'wb' );
+
+			fwrite( $handle,'[' );
 			foreach ( $wpdb->get_results( $adapter->show_tables( DB_NAME ), ARRAY_N ) as $row ) {
-				echo json_encode( array( 'path' => current( $row ), 'subtype' => 'table' ) ) . ',';
+				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'table' ) ) . ',' );
 			}
 			foreach ( $wpdb->get_results( $adapter->show_views( DB_NAME ), ARRAY_N ) as $row ) {
-				echo json_encode( array( 'path' => current( $row ), 'subtype' => 'view' ) ) . ',';
+				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'view' ) ) . ',' );
 			}
 			foreach ( $wpdb->get_results( $adapter->show_triggers( DB_NAME ), ARRAY_N ) as $row ) {
-				echo json_encode( array( 'path' => current( $row ), 'subtype' => 'trigger' ) ) . ',';
+				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'trigger' ) ) . ',' );
 			}
-			echo ']';
+			fwrite( $handle,']' );
+			fclose( $handle );
+
+			if ( self::_is_curl_available() ) {
+				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
+				$file = new VPBFiles();
+				if ( $file->download_curl( $filename ) ) {
+					echo '1';
+				} else {
+					echo '-1';
+				}
+				unlink( $filename );
+			}
 			wp_die();
 		}
 	}
@@ -257,18 +279,34 @@ class VPBackup
 	{
 		if ( $this->verify_request() ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqldump.php' ;
+			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$table   = filter_var( $_REQUEST['table'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
 			$view    = filter_var( $_REQUEST['view'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
 			$trigger = filter_var( $_REQUEST['trigger'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
 			if ( $table ) {
 				$export = new Mysqldump( 'mysql', array( 'include-tables' => array( $table ) ) );
-				$export->start();
 			} else if ( $view ) {
 				$export = new Mysqldump( 'mysql', array( 'include-views' => array( $view ) ) );
-				$export->start();
 			} else if ( $trigger ) {
 				$export = new Mysqldump( 'mysql', array( 'include-triggers' => array( $trigger ) ) );
-				$export->start();
+			}
+			if ( $export ) {
+				if ( self::_is_curl_available() ) {
+					$filename = Timeout::get_tmp_name( $_REQUEST['jobId'] );
+					if ( $export->start( $filename ) ) {
+						$file = new VPBFiles();
+						if ( $file->download_curl( $filename ) ) {
+							echo '1';
+						} else {
+							echo '-1';
+						}
+						unlink( $filename );
+					} else {
+						echo '2';
+					}
+				} else {
+					$export->start();
+				}
 			}
 			wp_die();
 		}
@@ -320,7 +358,22 @@ class VPBackup
 		if ( $this->verify_request() ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$export = new VPBFiles();
-			$export->glob( ABSPATH );
+			if ( self::_is_curl_available() ) {
+				$filename = Timeout::get_tmp_name( 'vpb-tmp-'.$_REQUEST['jobId'] );
+				if ( ! $export->glob( ABSPATH, $filename ) ) {
+					echo '2';
+				} else {
+					if ( $export->download_curl( $filename ) ) {
+						unlink( $filename );
+						echo '1';
+					} else {
+						unlink( $filename );
+						echo '-1';
+					}
+				}
+			} else {
+				$export->glob( ABSPATH );
+			}
 			wp_die();
 		}
 	}
@@ -356,7 +409,16 @@ class VPBackup
 		if ( $this->verify_request() ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$export = new VPBFiles();
-			$export->download( $_REQUEST['file'] );
+			if ( self::_is_curl_available() ) {
+				if ( $export->download_curl( $_REQUEST['file'] ) ) {
+					echo '1';
+				} else {
+					echo '-1';
+				}
+				wp_die();
+			} else {
+				$export->download( $_REQUEST['file'] );
+			}
 			wp_die();
 		}
 	}
@@ -373,18 +435,20 @@ class VPBackup
 		// validate against UUID
 		$byg_backup = get_site_option( self::OPTNAME, array() );
 		if ( ! strlen( $byg_backup['uuid'] ) ) { return ; }
-
 		$signature = md5(
 			$_REQUEST['sessionId'] . '|' .
 			$_REQUEST['timestamp'] . '|' .
 			$byg_backup['uuid'], false
 		);
+
 		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 && $this->verify_ip() ) {
 			$post = array(
 				'sessionSecret'	=> self::create_nonce( $_REQUEST['sessionId'] ),
 				'sessionId'    	=> $_REQUEST['sessionId'],
 				'version'	=> $this->_version,
 				'paths'		=> $this->_get_paths(),
+				'wpversion'	=> get_bloginfo( 'version' ),
+				'curl'		=> self::_is_curl_available(),
 			);
 			$resp = wp_remote_post(
 				esc_url( self::VPURL . 'jobs/session/' . $_REQUEST['sessionId'] ), array(
@@ -443,12 +507,14 @@ class VPBackup
 		// cloud flare proxy support
 		if ( isset($_SERVER['HTTP_CF_CONNECTING_IP']) ) {
 			$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-			require(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
+			require_once(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
+
 			if ( ! CloudFlareProxy::in_range_ip4( $_SERVER['REMOTE_ADDR'] ) ) {
 				return false;
 			}
 		} else {
 			$ip = $this->_get_remote_ip();
+
 		}
 		return ( in_array( $ip, $this->white_ips ) || in_array( $ip, gethostbynamel( self::ALLOWEDDOMAIN ) ) );
 	}
@@ -566,6 +632,16 @@ class VPBackup
 			}
 		}
 		return $paths;
+	}
+	/**
+	 * detect if curl is available
+	 * @access  private
+	 * @since   0.3.3
+	 * @return  boolean
+	 */
+	private function _is_curl_available( )
+	{
+		return function_exists( 'curl_init' );
 	}
 
 	/**

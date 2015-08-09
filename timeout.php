@@ -47,13 +47,16 @@ class Timeout {
 	static public function filename_escape($name) {
 		return preg_replace( '/[^A-Za-z0-9_\-]/', '_', $name );
 	}
+	static public function get_tmp_name($name) {
+		return sys_get_temp_dir() . DIRECTORY_SEPARATOR . self::filename_escape( $name );
+	}
 	static public function store($id, $data) {
-		$handle = fopen( sys_get_temp_dir() . DIRECTORY_SEPARATOR . self::filename_escape( 'vpb-'.$id ), 'w' );
+		$handle = fopen( self::get_tmp_name( 'vpb-state-'.$id ), 'w' );
 		fwrite( $handle, json_encode( $data ) );
 		fclose( $handle );
 	}
 	static public function retrieve($id) {
-		$filename = sys_get_temp_dir() . DIRECTORY_SEPARATOR . self::filename_escape( 'vpb-'.$id );
+		$filename = self::get_tmp_name( 'vpb-state-'.$id );
 		if ( is_readable( $filename ) ) {
 			$handle = fopen( $filename, 'r' );
 			$x = json_decode( stream_get_contents( $handle ),true );
@@ -63,7 +66,7 @@ class Timeout {
 		return false;
 	}
 	static public function cleanup($id) {
-		$filename = sys_get_temp_dir() . DIRECTORY_SEPARATOR . self::filename_escape( 'vpb-'.$id );
+		$filename = self::get_tmp_name( 'vpb-state-'.$id );
 		if ( file_exists( $filename ) ) {
 			unlink( $filename );
 		}

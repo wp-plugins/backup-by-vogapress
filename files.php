@@ -36,6 +36,13 @@ class VPBFiles
 	 */
 	private $basePath;
 	/**
+	 * fileHandle
+	 * @var     int
+	 * @access  private
+	 * @since   1.0.0
+	 */
+	private $fileHandle;
+	/**
 	 * File Mode Constants
 	 * @var     string
 	 * @access  public
@@ -114,7 +121,6 @@ class VPBFiles
 	public function upload ($stats)
 	{
 		$path = $this->get_absolute_path( $stats['path'] );
-		$this->mkdir( dirname( $path ) );
 		if ( ! empty($_POST['url']) ) {
 			$resp = wp_remote_get( $_POST['url'], array( 'stream' => true, 'filename' => $path ) );
 			if ( is_wp_error( $resp ) || 200 != $resp['response']['code'] ) {
@@ -128,7 +134,8 @@ class VPBFiles
 			if ( file_exists( $path ) ) {
 				unlink( $path );
 			}
-			symlink( $path, $stats['link']['path'] );
+			chdir( dirname( $path ) );
+			symlink( $stats['link']['linkPath'], $path );
 			chmod( $path, $stats['mode'] & 0777 );
 			touch( $path, $stats['mtime'] );
 			return true;
@@ -162,13 +169,42 @@ class VPBFiles
 		readfile( $fileName );
 		return true;
 	}
-	public function glob( $path )
+	public function download_curl ($file)
+	{
+		$fileName = $this->get_absolute_path( $file );
+		$realPath = realpath( $fileName );
+
+		if ( empty($file) || empty($realPath) || ! is_readable( $realPath ) ) {
+			header( 'HTTP/1.0 404 Not Found' );
+			return false ;
+		}
+		if ( function_exists( 'curl_file_create' ) ) {
+			$post = array('signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => curl_file_create( $realPath ));
+		} else {
+			$post = array('signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => '@'.$realPath);
+		}
+
+		$ch = curl_init();
+		curl_setopt( $ch, CURLOPT_URL,\VPBackup\VPBackup::VPURL.'jobs/download/'.$_REQUEST['jobId'] );
+		curl_setopt( $ch, CURLOPT_POST,1 );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, $post );
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		$result = curl_exec( $ch );
+		curl_close( $ch );
+
+		if ( false === $result || '1' !== $result ) {
+			return false;
+		}
+		return true;
+	}
+	public function glob( $path, $filename = 'php://output' )
 	{
 		$this->basePath = $path;
+		$this->fileHandle = fopen( $filename, 'wb' );
 		clearstatcache();
 		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( ! $resume ) {
-			echo '[';
+			fwrite( $this->fileHandle,'[' );
 			$traveled = [ $path ];
 			$stack 	  = [ $path ];
 		} else {
@@ -192,7 +228,9 @@ class VPBFiles
 					($stat['link']['mode'] & self::S_IFDIR ) == self::S_IFDIR ) {
 
 					$link_fullpath = $this->get_absolute_path( $stat['link']['path'] );
-					if ( ! in_array( $link_fullpath, $traveled ) ) {
+
+					# do not walk thru if we have or will backup the directory
+					if ( ! preg_match( '#^'.ABSPATH.'#', $link_fullpath ) && ! in_array( $link_fullpath, $traveled ) ) {
 						array_push( $stack, $fullpath );
 						array_push( $traveled, $fullpath );
 						array_push( $traveled, $link_fullpath );
@@ -204,11 +242,13 @@ class VPBFiles
 					'traveled' 	=> $traveled,
 					'stack'		=> $stack,
 				));
+				fclose( $this->fileHandle );
 				return false;
 			}
 		}
-		echo ']';
+		fwrite( $this->fileHandle,']' );
 		Timeout::cleanup( $_REQUEST['jobId'] );
+		fclose( $this->fileHandle );
 		return true;
 	}
 	private function _file_stat( $path, $echo = true )
@@ -220,6 +260,7 @@ class VPBFiles
 		$stats['readable'] = is_readable( $path );
 		if ( ($stats['mode'] & VPBFiles::S_IFLNK) == VPBFiles::S_IFLNK ) {
 			$stats['link'] = $this->_file_stat( $this->get_absolute_path( readlink( $path ), dirname( $path ) ), false );
+			$stats['link']['linkPath'] = readlink( $path );
 
 		} else if ( ($stats['mode'] & VPBFiles::S_IFSOCK) == VPBFiles::S_IFSOCK ) {
 			// nothing special
@@ -228,7 +269,7 @@ class VPBFiles
 		} else if ( $stats['mode'] & VPBFiles::S_IFREG && $stats['readable'] ) {
 			$stats['md5'] = md5_file( $path );
 		}
-		if ( $echo ) { echo json_encode( $stats ), ',';
+		if ( $echo ) { fwrite( $this->fileHandle, json_encode( $stats ).',' );
 		}
 		return $stats ;
 	}
