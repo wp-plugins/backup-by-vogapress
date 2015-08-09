@@ -33,8 +33,7 @@ require(dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'timeout.php');
 
 class VPBackup
 {
-	//  CONST VPURL         = 'https://vogapress.com/';
-	CONST VPURL 		= 'http://mean.vogapress.com:3000/';
+	CONST VPURL         	= 'https://vogapress.com/';
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST VERSION		= '0.3.3';
