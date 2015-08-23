@@ -131,14 +131,27 @@ class VPBFiles
 			return true;
 
 		} else if ( ( $stats['mode'] & self::S_IFLNK ) == self::S_IFLNK ) {
+			// php sometimes are confused with existing file structure
 			if ( file_exists( $path ) ) {
 				unlink( $path );
 			}
 			chdir( dirname( $path ) );
-			symlink( $stats['link']['linkPath'], $path );
-			chmod( $path, $stats['mode'] & 0777 );
-			touch( $path, $stats['mtime'] );
-			return true;
+			$link_path = $stats['link']['linkPath'];
+			// Windows OS requires absolute path
+			if (strncasecmp(PHP_OS, 'WIN', 3) == 0) {
+				$link_path = $this->get_absolute_path( $link_path, $path );
+			}
+
+			if ( symlink( $link_path, $path ) ) {
+				chmod( $path, $stats['mode'] & 0777 );
+				touch( $path, $stats['mtime'] );
+				return true;
+			} else {
+				clearstatcache();
+				unlink( $path );
+				clearstatcache(true, $path);
+			}
+			return false;
 
 		} else if ( ( $stats['mode'] & self::S_IFDIR ) == self::S_IFDIR ) {
 			if ( ! file_exists( $path ) ) {

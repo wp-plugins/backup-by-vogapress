@@ -12,7 +12,8 @@ if ( isset( $_POST['byg-nonce'] ) && wp_verify_nonce( $_POST['byg-nonce'], __FIL
 			'multisite'	=> is_multisite(),
 			'type'		=> 'backup',
 			'nonce'		=> \VPBackup\VPBackup::create_nonce( 'byg-token-register' ),
-			'version'	=> '0.3',
+			'version'	=> \VPBackup\VPBackup::VERSION,
+			'slash'		=> DIRECTORY_SEPARATOR,
 		),
 		));
 	if ( is_wp_error( $response ) ) {

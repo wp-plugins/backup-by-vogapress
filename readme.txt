@@ -2,12 +2,12 @@
 Contributors: vogapress
 Tags: backup, WordPress backup, WP backup, back up, full backup, database backup, files backup, website backup, wooCommerce backup, wooCommerce, replicate, restore, restoration, duplicate, snapshot, multisite, file, db, database, storage, cloud storage
 Requires at least: 3.0.1
-Tested up to: 4.2.4
+Tested up to: 4.3
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
+Simplest way to manage and monitor your backups with VOGAPress cloud service. Offering FREE Personal WordPress cloud backup service.
 
 == Description ==
 
@@ -15,7 +15,7 @@ Do you have an adequate WordPress backup strategy to ensure you can recover from
 
 Backup by VOGAPress is designed to help manage your WordPress backups by giving you more insights to the files.  It's a cloud backup service that offers to keep track and notifiy you of the file changes, and, an easy user interface to visually compare files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
 
-Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  *We offer a free tier personal plan and professional business plan.  No credit card is required to register.*
+Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan and professional business plan.  No credit card is required to register.**
 
 See [VOGAPress](https://vogapress.com) for details.
 
@@ -29,9 +29,9 @@ Backup By VOGAPress offers these goodies:
 *   Works with Single, Multisite WordPress, and wooCommerce
 *   Review file changes with syntax and difference highlighting
 *   Email notification to keep you informed of the statuses
-*   Secured data transfer
+*   Secured data transferring to keep away hackers eavesdropping
 *   Low server requirements and efficent use of bandwidths, does not require Cron to work.
-*   Works with complex directory structure and links
+*   Works with large and complex directory and links structure
 *   Built-in server uptime monitoring
 *   Simple plan based on storage usage per WordPress instance 
 *   And many more ...
@@ -48,9 +48,9 @@ Backup By VOGAPress offers these goodies:
 
 Your backup data is stored in multiple datacenters in the cloud.  They will always be available to access from our user interface for review and restore.
 
-= Is the data secured? =
+= Is my data safe? =
 
-The data transfered between your server and VOGAPress data center are through secured HTTPs channels.  It does require your hosting server supports PHP Curl.
+The data transferred between the WordPress server and VOGAPress data center are through secured HTTPs channels.  It does require server supports of PHP Curl library.
 
 = Does my server require special setup? =
 
@@ -58,15 +58,15 @@ No, Backup by VOGAPress is designed to work in plenty of environments, consume v
 
 = Does it support Multisite? =
 
-Yes, it does work in WordPress Multisite.  The plugin admin page is in the network site.
+Yes, it does work in WordPress Multisite.  All subsites are included in one service plan.  The plugin admin page is in the network site.
 
 = Do I need to register an account with VOGAPress? =
 
-Yes, you will need to register an VOGAPress account to enable our cloud services.  You may use your email or social account for the registration.  No credit card is requried to open an account.
+Yes, you will need to register an VOGAPress account to enable our cloud backup service.  You may use email or social account for the registration.  No credit card is required to open an account.
 
 = Is there a free tier service plan to backup my personal WordPress website? =
 
-Yes, we offer a free tier service plan.  See [VOGAPress](https://vogapress.com) on the plan's features.  It's our way to say thank you for the wonderful WordPress community.
+Yes, we offer a free tier Personal backup service plan.  See [VOGAPress](https://vogapress.com/#!/#price) on the plan's features.  It's our way to say thank you for the wonderful and supportive WordPress community.
 
 == Screenshots ==
 
@@ -78,6 +78,11 @@ Yes, we offer a free tier service plan.  See [VOGAPress](https://vogapress.com) 
 6. Easy restore with a button click.
 
 == Changelog ==
+
+= 0.3.4 =
+* Improved link structure supports.
+* Improved UI.
+* Support WordPress 4.3
 
 = 0.3.3 =
 * Support HTTPS data transfer.
