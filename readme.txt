@@ -7,7 +7,7 @@ Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Simplest way to manage and monitor your backups with VOGAPress cloud service. Offering FREE Personal WordPress cloud backup service.
+Simplest way to manage and monitor your backups with VOGAPress cloud service. FREE cloud backup service is available for personal WordPress site.
 
 == Description ==
 
