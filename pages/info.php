@@ -20,9 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 			<?php
 				$status = VPBackup\VPBackup::get_status();
 			if ( 'inactive' === $status ) {
-				echo 'inactive, re-activate <a href="'.network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ).'">here</a>';
+				echo '<div style="color:#EAAB00; text-transform: capitalize">inactive, re-activate <a href="'.network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ).'">here</a></div>';
 			} else {
-				echo $status;
+				echo '<span style="color:#82C352; text-transform: capitalize">'.$status.'</span>';
 			}
 			?>
 			</td>
