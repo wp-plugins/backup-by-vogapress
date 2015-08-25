@@ -50,11 +50,11 @@ Your backup data is stored in multiple datacenters in the cloud.  They will alwa
 
 = Is my data safe? =
 
-The data transferred between the WordPress server and VOGAPress data center are through secured HTTPs channels.  It does require server supports of PHP Curl library.
+The data transferred between the WordPress server and VOGAPress data center are through secured HTTPs channels.  PHP curl library is required on the WordPress server.
 
 = Does my server require special setup? =
 
-No, Backup by VOGAPress is designed to work in plenty of environments, consume very little storage and bandwidths.  It works in WordPress v3.0.1 or higher with PHP v5.2 or higher.
+No, Backup by VOGAPress is designed to work in plenty of environments.  It consumes very little storage and bandwidths.  Compatible with WordPress v3.0.1 or higher and PHP v5.2 or higher.
 
 = Does it support Multisite? =
 
