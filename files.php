@@ -22,13 +22,6 @@ class VPBFiles
 	 */
 	public $_token;
 	/**
-	 * Deadline
-	 * @var     int
-	 * @access  public
-	 * @since   1.0.0
-	 */
-	public $deadline;
-	/**
 	 * basePath
 	 * @var     string
 	 * @access  private
@@ -67,12 +60,11 @@ class VPBFiles
 	{
 		$this->_version = $version;
 		$this->_token = 'vbp-files';
-		$this->deadline = ($_SERVER['REQUEST_TIME'] ? $_SERVER['REQUEST_TIME'] : time()) + ( ini_get( 'max_execution_time' ) == 0 ? 300 : ini_get( 'max_execution_time' ) ) - 1;
 	} // End __construct ()
 
 	private function get_absolute_path ($path, $parent = ABSPATH)
 	{
-		if ( '/' !== substr( $path,0,1 ) ) {
+		if ( DIRECTORY_SEPARATOR !== substr( $path,0,1 ) ) {
 			$path = path_join( $parent, $path );
 		}
 		$path = str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, $path );

@@ -12,9 +12,10 @@ class Timeout {
 	static public $changeable = false;
 	static public $maxTime = 0;
 	static public function init() {
-		self::$maxTime = ( 0 == ini_get( 'max_execution_time' ) ? 30 : ini_get( 'max_execution_time' ) );
+		self::$maxTime = intval(ini_get( 'max_execution_time' ));
+		self::$maxTime = ( self::$maxTime ? self::$maxTime : 30 );
 		set_time_limit( self::$maxTime + 60 );
-		self::$changeable = (self::$maxTime + 60) == ini_get( 'max_execution_time' );
+		self::$changeable = (self::$maxTime + 60) == intval(ini_get( 'max_execution_time' ));
 		if ( self::$changeable ) { self::$maxTime += 60; }
 		self::$startTime = (time() - $_SERVER['REQUEST_TIME']) + self::get_time();
 	}

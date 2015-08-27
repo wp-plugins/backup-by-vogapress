@@ -79,6 +79,10 @@ Yes, we offer a free tier Personal backup service plan.  See [VOGAPress](https:/
 
 == Changelog ==
 
+= 0.3.5 =
+* Removed filter_var dependency.
+* Added compatilibity checker.
+
 = 0.3.4 =
 * Improved link structure supports.
 * Improved UI.

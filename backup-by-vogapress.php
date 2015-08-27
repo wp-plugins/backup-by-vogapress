@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.4
+ * Version: 0.3.5
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
  * Author URI: http://vogapress.com/
  * Requires at least: 3.0.1
- * Tested up to: 4.2.4
+ * Tested up to: 4.3
  * Network: True
  *
  * Text Domain: backup-by-vogapress
@@ -36,7 +36,11 @@ class VPBackup
 	CONST VPURL         	= 'https://vogapress.com/';
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
-	CONST VERSION		= '0.3.4';
+	CONST VERSION		= '0.3.5';
+	CONST VALIDATE_NUM	= 1;
+	CONST VALIDATE_ALPHANUM	= 2;
+	CONST VALIDATE_IP	= 3;
+	CONST VALIDATE_NAME	= 4;
 
 	/**
 	 * The single instance of WordPress_Plugin_Template.
@@ -185,7 +189,7 @@ class VPBackup
 	 */
 	public function add_actions ()
 	{
-		$actions = array( 'session', 'data_list', 'data_export', 'data_import', 'file_list', 'file_export', 'file_import', 'register' );
+		$actions = array( 'session', 'data_list', 'data_export', 'data_import', 'file_list', 'file_export', 'file_import', 'register', 'checks' );
 		foreach ( $actions as $action ) {
 			add_action( 'wp_ajax_vpb_'.$action, array( &$this, $action ) );
 			add_action( 'wp_ajax_nopriv_vpb_'.$action, array( &$this, $action ) );
@@ -279,9 +283,9 @@ class VPBackup
 		if ( $this->verify_request() ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqldump.php' ;
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
-			$table   = filter_var( $_REQUEST['table'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
-			$view    = filter_var( $_REQUEST['view'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
-			$trigger = filter_var( $_REQUEST['trigger'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9_\$]+/' ) ) );
+			$table   = self::filter( $_REQUEST['table'], self::VALIDATE_NAME );
+			$view    = self::filter( $_REQUEST['view'], self::VALIDATE_NAME );
+			$trigger = self::filter( $_REQUEST['trigger'], self::VALIDATE_NAME );
 			if ( $table ) {
 				$export = new Mysqldump( 'mysql', array( 'include-tables' => array( $table ) ) );
 			} else if ( $view ) {
@@ -439,7 +443,6 @@ class VPBackup
 			$_REQUEST['timestamp'] . '|' .
 			$byg_backup['uuid'], false
 		);
-
 		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 && $this->verify_ip() ) {
 			$post = array(
 				'sessionSecret'	=> self::create_nonce( $_REQUEST['sessionId'] ),
@@ -513,7 +516,6 @@ class VPBackup
 			}
 		} else {
 			$ip = $this->_get_remote_ip();
-
 		}
 		return ( in_array( $ip, $this->white_ips ) || in_array( $ip, gethostbynamel( self::ALLOWEDDOMAIN ) ) );
 	}
@@ -526,10 +528,10 @@ class VPBackup
 	 */
 	private function verify_request()
 	{
-		$timestamp = filter_var( $_REQUEST['timestamp'], FILTER_VALIDATE_INT );
-		$sessionId = filter_var( $_REQUEST['sessionId'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9]+/' ) ) );
-		$signature = filter_var( $_REQUEST['signature'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9]+/' ) ) );
-		$jobId = filter_var( $_REQUEST['jobId'], FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/[a-zA-Z0-9]+/' ) ) );
+		$timestamp = self::filter( $_REQUEST['timestamp'], self::VALIDATE_NUM );
+		$sessionId = self::filter( $_REQUEST['sessionId'], self::VALIDATE_ALPHANUM );
+		$signature = self::filter( $_REQUEST['signature'], self::VALIDATE_ALPHANUM );
+		$jobId = self::filter( $_REQUEST['jobId'], self::VALIDATE_ALPHANUM );
 		$byg_backup = get_site_option( self::OPTNAME, array() );
 
 		if ( ! $timestamp || ! $sessionId || ! $signature || ! $jobId || ! strlen( $byg_backup['uuid'] ) ) {
@@ -568,12 +570,12 @@ class VPBackup
 		} else {
 			$headers = $_SERVER;
 		}
-		if ( array_key_exists( 'X-Forwarded-For', $headers ) && filter_var( $headers['X-Forwarded-For'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+		if ( array_key_exists( 'X-Forwarded-For', $headers ) && self::filter( $headers['X-Forwarded-For'], self::VALIDATE_IP ) ) {
 			$the_ip = $headers['X-Forwarded-For'];
-		} elseif ( array_key_exists( 'HTTP_X_FORWARDED_FOR', $headers ) && filter_var( $headers['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+		} elseif ( array_key_exists( 'HTTP_X_FORWARDED_FOR', $headers ) && self::filter( $headers['HTTP_X_FORWARDED_FOR'], self::VALIDATE_IP ) ) {
 			$the_ip = $headers['HTTP_X_FORWARDED_FOR'];
 		} else {
-			$the_ip = filter_var( $_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 );
+			$the_ip = self::filter( $_SERVER['REMOTE_ADDR'], self::VALIDATE_IP );
 		}
 		return $the_ip;
 	}
@@ -631,6 +633,33 @@ class VPBackup
 			}
 		}
 		return $paths;
+	}
+	/**
+	 * checks for compatibility
+	 * @access  public 
+	 * @since   0.3.5
+	 * @return  void
+	 */
+	public function checks()
+	{
+		if ( $this->verify_ip() ) {
+			echo 'I';
+			echo ( $this->verify_request() ? 'R' : 'r' );
+			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ; echo 'F';
+			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqldump.php' ; echo 'D';
+			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ; echo 'I';
+			$tmpname = Timeout::get_tmp_name( $_REQUEST['jobId'] ); echo 'T';
+			echo ( $this->_get_remote_file( self::VPURL, $tmp_name ) ? 'D' : 'd' );
+			echo ( file_exists ( $tmpname ) ? 'E' : 'e' );
+			$export = new VPBFiles(); echo 'F';
+			if ( self::_is_curl_available() ) {
+				echo 'C';
+				echo ( $export->download_curl('index.php') ? 'U' : 'u' );
+			} else {
+				echo 'c';
+			}
+			wp_die();
+		}
 	}
 	/**
 	 * detect if curl is available
@@ -696,6 +725,39 @@ class VPBackup
 	 */
 	public static function esc_uuid($x) {
 		return preg_replace( '/[^A-Za-z0-9\-]/','',$x );
+	}
+
+	/**
+	 * Filter function to validate inputs
+	 * @access public static
+	 * @since  0.3.5
+	 * @return string
+	 */
+	public static function filter($x, $type) {
+		if ( function_exists( 'filter_var' ) ) {
+			switch($type) {
+				case self::VALIDATE_NUM :
+					return filter_var( $x, FILTER_VALIDATE_INT );
+				case self::VALIDATE_ALPHANUM :
+					return filter_var( $x, FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/^[a-zA-Z0-9]+$/' ) ) );
+				case self::VALIDATE_IP :
+					return filter_var( $x, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 );
+				case self::VALIDATE_NAME :
+					return filter_var( $x, FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/^[a-zA-Z0-9_\$]+$/' ) ) );
+			}
+		} else {
+			switch($type) {
+				case self::VALIDATE_NUM :
+					return ( is_numeric( $x ) ? $x : false );
+				case self::VALIDATE_ALPHANUM :
+					return ( preg_match( '/^[a-zA-Z0-9]+$/', $x ) ? $x : false );
+				case self::VALIDATE_IP :
+					return ( ip2long( $x ) ? $x : false );
+				case self::VALIDATE_NAME :
+					return ( preg_match( '/^[a-zA-Z0-9_\$]+$/', $x ) ? $x : false );
+			}
+
+		}
 	}
 
 }
