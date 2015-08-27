@@ -15,7 +15,7 @@ Do you have an adequate WordPress backup strategy to ensure you can recover from
 
 Backup by VOGAPress is designed to help manage your WordPress backups by giving you more insights to the files.  It's a cloud backup service that offers to keep track and notifiy you of the file changes, and, an easy user interface to visually compare files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
 
-Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan and professional business plan.  No credit card is required to register.**
+Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan or feature rich professional business plan.  No credit card is required to register.**
 
 See [VOGAPress](https://vogapress.com) for details.
 
