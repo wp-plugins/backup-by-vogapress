@@ -130,7 +130,7 @@ class VPBFiles
 			chdir( dirname( $path ) );
 			$link_path = $stats['link']['linkPath'];
 			// Windows OS requires absolute path
-			if (strncasecmp(PHP_OS, 'WIN', 3) == 0) {
+			if ( 0 == strncasecmp( PHP_OS, 'WIN', 3 ) ) {
 				$link_path = $this->get_absolute_path( $link_path, $path );
 			}
 
@@ -141,7 +141,7 @@ class VPBFiles
 			} else {
 				clearstatcache();
 				unlink( $path );
-				clearstatcache(true, $path);
+				clearstatcache( true, $path );
 			}
 			return false;
 
@@ -184,9 +184,9 @@ class VPBFiles
 			return false ;
 		}
 		if ( function_exists( 'curl_file_create' ) ) {
-			$post = array('signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => curl_file_create( $realPath ));
+			$post = array( 'signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => curl_file_create( $realPath ) );
 		} else {
-			$post = array('signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => '@'.$realPath);
+			$post = array( 'signature' => $_REQUEST['signature'], 'timestamp' => $_REQUEST['timestamp'], 'file_content' => '@'.$realPath );
 		}
 
 		$ch = curl_init();

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.5
+ * Version: 0.3.6
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -508,11 +508,12 @@ class VPBackup
 	private function verify_ip() {
 		// cloud flare proxy support
 		if ( isset($_SERVER['HTTP_CF_CONNECTING_IP']) ) {
-			$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
 			require_once(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
 
-			if ( ! CloudFlareProxy::in_range_ip4( $_SERVER['REMOTE_ADDR'] ) ) {
-				return false;
+			if ( ! CloudFlareProxy::in_range( $_SERVER['REMOTE_ADDR'] ) ) {
+				$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+			} else {
+				$ip = $this->_get_remote_ip();
 			}
 		} else {
 			$ip = $this->_get_remote_ip();
@@ -636,7 +637,7 @@ class VPBackup
 	}
 	/**
 	 * checks for compatibility
-	 * @access  public 
+	 * @access  public
 	 * @since   0.3.5
 	 * @return  void
 	 */
@@ -650,11 +651,11 @@ class VPBackup
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ; echo 'I';
 			$tmpname = Timeout::get_tmp_name( $_REQUEST['jobId'] ); echo 'T';
 			echo ( $this->_get_remote_file( self::VPURL, $tmp_name ) ? 'D' : 'd' );
-			echo ( file_exists ( $tmpname ) ? 'E' : 'e' );
+			echo ( file_exists( $tmpname ) ? 'E' : 'e' );
 			$export = new VPBFiles(); echo 'F';
 			if ( self::_is_curl_available() ) {
 				echo 'C';
-				echo ( $export->download_curl('index.php') ? 'U' : 'u' );
+				echo ( $export->download_curl( 'index.php' ) ? 'U' : 'u' );
 			} else {
 				echo 'c';
 			}
@@ -735,7 +736,7 @@ class VPBackup
 	 */
 	public static function filter($x, $type) {
 		if ( function_exists( 'filter_var' ) ) {
-			switch($type) {
+			switch ( $type ) {
 				case self::VALIDATE_NUM :
 					return filter_var( $x, FILTER_VALIDATE_INT );
 				case self::VALIDATE_ALPHANUM :
@@ -746,7 +747,7 @@ class VPBackup
 					return filter_var( $x, FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/^[a-zA-Z0-9_\$]+$/' ) ) );
 			}
 		} else {
-			switch($type) {
+			switch ( $type ) {
 				case self::VALIDATE_NUM :
 					return ( is_numeric( $x ) ? $x : false );
 				case self::VALIDATE_ALPHANUM :
@@ -756,7 +757,6 @@ class VPBackup
 				case self::VALIDATE_NAME :
 					return ( preg_match( '/^[a-zA-Z0-9_\$]+$/', $x ) ? $x : false );
 			}
-
 		}
 	}
 

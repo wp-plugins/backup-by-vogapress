@@ -13,9 +13,9 @@ Simplest way to manage and monitor your backups with VOGAPress cloud service. FR
 
 Do you have an adequate WordPress backup strategy to ensure you can recover from disasters and hacks?  While hosting companies often offer backup solutions to recover from hardware failure, their offerings are basic replicate and restore functions without monitoring the states of the files.  This makes it harder to detect what and when files are tempered by hackers.
 
-Backup by VOGAPress is designed to help manage your WordPress backups by giving you more insights to the files.  It's a cloud backup service that offers to keep track and notifiy you of the file changes, and, an easy user interface to visually compare files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
+Backup by VOGAPress is a cloud service that backups everything: your source files, uploads, and database.  It is designed to help manage your WordPress backups by giving you more insights to the files.  It's a service that offers to keep track and notifiy you of the file changes, and, with an easy to use interface that provides visual comparison of files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
 
-Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan or feature rich professional business plan.  No credit card is required to register.**
+Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan and professional business plan.  No credit card is required to register.**
 
 See [VOGAPress](https://vogapress.com) for details.
 
@@ -50,11 +50,11 @@ Your backup data is stored in multiple datacenters in the cloud.  They will alwa
 
 = Is my data safe? =
 
-The data transferred between the WordPress server and VOGAPress data center are through secured HTTPs channels.  PHP curl library is required on the WordPress server.
+The data transferred between the WordPress server and VOGAPress data center are through secured HTTPs channels.  Files and data are stored encrypted at rest in our data center.  PHP curl library is required on the WordPress server to enable secured communication.
 
 = Does my server require special setup? =
 
-No, Backup by VOGAPress is designed to work in plenty of environments.  It consumes very little storage and bandwidths.  Compatible with WordPress v3.0.1 or higher and PHP v5.2 or higher.
+No, Backup by VOGAPress is designed to work in plenty of environments.  It consumes very little storage and bandwidths by performing incremental backups.  The plugin is compatible with WordPress v3.0.1 or higher and PHP v5.2 or higher.
 
 = Does it support Multisite? =
 
@@ -78,6 +78,10 @@ Yes, we offer a free tier Personal backup service plan.  See [VOGAPress](https:/
 6. Easy restore with a button click.
 
 == Changelog ==
+
+= 0.3.6 =
+* Compatible with CloudFlare plugin.
+* Added IPv6 to CloudFlare proxy address validation.
 
 = 0.3.5 =
 * Removed filter_var dependency.
