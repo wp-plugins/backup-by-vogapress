@@ -13,7 +13,7 @@ Simplest way to manage and monitor your backups with VOGAPress cloud service. FR
 
 Do you have an adequate WordPress backup strategy to ensure you can recover from disasters and hacks?  While hosting companies often offer backup solutions to recover from hardware failure, their offerings are basic replicate and restore functions without monitoring the states of the files.  This makes it harder to detect what and when files are tempered by hackers.
 
-Backup by VOGAPress is a cloud service that backups everything: your source files, uploads, and database.  It is designed to help manage your WordPress backups by giving you more insights to the files.  It's a service that offers to keep track and notifiy you of the file changes, and, with an easy to use interface that provides visual comparison of files before deciding what to restore.  Restoring is a simple 2-clicks action with options to select individual file, file types, and, database.
+Backup by VOGAPress is a cloud service that backups everything: your source files, uploads, and database.  It is designed to help manage your WordPress backups by giving you more insights to the files,  and keep track plus notifiy you of the file changes.  Its easy to use interface offers visual comparison of files so you can decide the right version to restore.  Automated restore is a simple 2-clicks action with options to select individual file, file types, and, database.
 
 Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan and professional business plan.  No credit card is required to register.**
 
