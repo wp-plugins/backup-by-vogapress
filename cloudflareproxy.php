@@ -53,4 +53,67 @@ class CloudFlareProxy {
 				return self::in_range_ipv6( $ip );
 			}
 		}
+
+		static function get_api_keys() {
+			$byg_backup = get_site_option( VPBackup::OPTNAME, array() );
+			if ( defined( 'CLOUDFLARE_VERSION' ) && get_option( 'cloudflare_api_key' ) ) {
+				$token = get_option( 'cloudflare_api_key' );
+				$email = get_option( 'cloudflare_api_email' );
+			} else {
+				$email = $byg_backup['cloudflare_email'];
+				$token = $byg_backup['cloudflare_token'];
+			}
+			if ( $token && $email ) {
+				return array( 'token' => $token, 'email' => $email ); }
+
+			return false;
+		}
+
+		static function update_whitelist() {
+			$hosts = gethostbynamel( VPBackup::ALLOWEDDOMAIN );
+			$byg_backup = get_site_option( VPBackup::OPTNAME, array() );
+			$keys = self::get_api_keys();
+
+			if ( $byg_backup['cloudflare'] ) {
+				$new_hosts = array_diff( $byg_backup['cloudflare_wl'], $hosts );
+				$old_hosts = array_diff( $hosts, $byg_backup['cloudflare_wl'] );
+			} else {
+				$new_hosts = $hosts;
+
+			}
+			if ( ! $keys ) {
+				return false ;
+			}
+			foreach ( $old_hosts as $host ) {
+				$res = wp_remote_post('https://www.cloudflare.com/api_json.html',array(
+					'method' => 'POST',
+					'body' => array(
+						'a'	=> 'nul',
+						'tkn'	=> $keys['token'],
+						'email'	=> $keys['email'],
+						'key'	=> $host,
+					)
+				));
+				if ( is_wp_error( $res ) ) {
+					return false ;
+				}
+			}
+			foreach ( $new_hosts as $host ) {
+				$res = wp_remote_post('https://www.cloudflare.com/api_json.html',array(
+					'method' => 'POST',
+					'body' => array(
+						'a'	=> 'wl',
+						'tkn'	=> $keys['token'],
+						'email'	=> $keys['email'],
+						'key'	=> $host,
+					)
+				));
+				if ( is_wp_error( $res ) ) {
+					return false ;
+				}
+			}
+			$byg_backup['cloudflare_wl'] = $hosts;
+			update_site_option( VPBackup::OPTNAME, $byg_backup );
+			return true;
+		}
 }

@@ -79,6 +79,9 @@ Yes, we offer a free tier Personal backup service plan.  See [VOGAPress](https:/
 
 == Changelog ==
 
+= 0.3.7 =
+* Added CloudFlare firewall settings update.
+
 = 0.3.6 =
 * Compatible with CloudFlare plugin.
 * Added IPv6 to CloudFlare proxy address validation.

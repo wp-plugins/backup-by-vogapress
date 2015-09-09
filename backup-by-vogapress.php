@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.6
+ * Version: 0.3.7
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -36,7 +36,8 @@ class VPBackup
 	CONST VPURL         	= 'https://vogapress.com/';
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
-	CONST VERSION		= '0.3.5';
+	CONST NONCE		= 'vogapress-backup';
+	CONST VERSION		= '0.3.7';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -220,6 +221,8 @@ class VPBackup
 		$byg_backup = get_site_option( self::OPTNAME, array() );
 		if ( ! $byg_backup || ! strlen( $byg_backup['uuid'] ) ) {
 			echo '<div class="update-nag"><a href="vogapress.com">Backup by VOGAPress</a> requires activation.  Activate <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ) ) . '">here</a>.</div>';
+		} else {
+			self::cloudflare_init();
 		}
 		if ( '1' == $_REQUEST['bygmessage'] ) {
 			echo "<div class='updated'><p>Backup by VOGAPress is activated.</p></div>";
@@ -760,6 +763,35 @@ class VPBackup
 		}
 	}
 
+	/**
+	 * cloudflare related actions
+	 * @access private
+	 * @since  0.3.6
+	 * @return void
+	 */
+	private function cloudflare_init() {
+		if ( ! isset($_SERVER['HTTP_CF_CONNECTING_IP']) ) {
+			return ;
+		}
+		if ( isset( $_POST['vpb_nonce'] )
+			&& wp_verify_nonce( $_POST['vpb_nonce'], self::NONCE )
+		) {
+			$byg_backup = get_site_option( self::OPTNAME, array() );
+			$byg_backup['cloudflare_email'] = $_POST['vpb_cf_email'];
+			$byg_backup['cloudflare_token'] = $_POST['vpb_cf_token'];
+			update_site_option( self::OPTNAME, $byg_backup );
+			echo "<div class='updated'><p>Backup by VOGAPress information saved.</p></div>";
+		}
+
+		require_once(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
+		if ( ! CloudFlareProxy::get_api_keys() ) {
+			echo '<div class="update-nag"><p>Backup by VOGAPRess requires CloudFlare account information to configure the firewall settings. <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings' ) ) . '">Here</a></p></div>';
+		} else {
+			if ( ! CloudFlareProxy::update_whitelist() ) {
+				echo '<div class="error"><p>Backup by VOGAPRess failed to update CloudFlare firewall settings.</p></div>';
+			}
+		}
+	}
 }
 
 new VPBackup();
