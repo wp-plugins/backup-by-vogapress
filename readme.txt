@@ -66,7 +66,7 @@ Yes, you will need to register an VOGAPress account to enable our cloud backup s
 
 = Is there a free tier service plan to backup my personal WordPress website? =
 
-Yes, we offer a free tier Personal backup service plan.  See [VOGAPress](https://vogapress.com/#!/#price) on the plan's features.  It's our way to say thank you for the wonderful and supportive WordPress community.
+Yes, we offer a free tier Personal backup service plan.  See the feature set on [VOGAPress](https://vogapress.com/#!/#price).  It's our way to say thank you for the wonderful and supportive WordPress community.
 
 == Screenshots ==
 
