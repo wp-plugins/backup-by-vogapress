@@ -55,13 +55,12 @@ class CloudFlareProxy {
 		}
 
 		static function get_api_keys() {
-			$byg_backup = get_site_option( VPBackup::OPTNAME, array() );
 			if ( defined( 'CLOUDFLARE_VERSION' ) && get_option( 'cloudflare_api_key' ) ) {
 				$token = get_option( 'cloudflare_api_key' );
 				$email = get_option( 'cloudflare_api_email' );
 			} else {
-				$email = $byg_backup['cloudflare_email'];
-				$token = $byg_backup['cloudflare_token'];
+				$email = VPBackup::$settings['cloudflare_email'];
+				$token = VPBackup::$settings['cloudflare_token'];
 			}
 			if ( $token && $email ) {
 				return array( 'token' => $token, 'email' => $email ); }
@@ -79,6 +78,7 @@ class CloudFlareProxy {
 				$old_hosts = array_diff( $hosts, $byg_backup['cloudflare_wl'] );
 			} else {
 				$new_hosts = $hosts;
+				$old_hosts = array();
 
 			}
 			if ( ! $keys ) {

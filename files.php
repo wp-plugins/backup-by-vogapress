@@ -227,7 +227,6 @@ class VPBFiles
 
 				if ( ( $stat['mode'] & self::S_IFDIR ) == self::S_IFDIR && ! in_array( $stat['path'], $traveled ) ) {
 					array_push( $stack, $fullpath );
-					array_push( $traveled, $fullpath );
 
 				} else if ( ( $stat['mode'] & self::S_IFLNK ) == self::S_IFLNK &&
 					($stat['link']['mode'] & self::S_IFDIR ) == self::S_IFDIR ) {
@@ -235,11 +234,19 @@ class VPBFiles
 					$link_fullpath = $this->get_absolute_path( $stat['link']['path'] );
 
 					# do not walk thru if we have or will backup the directory
-					if ( ! preg_match( '#^'.ABSPATH.'#', $link_fullpath ) && ! in_array( $link_fullpath, $traveled ) ) {
+					$founded = false;
+					foreach ( $traveled as $tv ) {
+						if ( preg_match( '#^'.$tv.'#', $link_fullpath ) ) {
+							$founded = true;
+							break ;
+						}
+					}
+					# sanity check to see if the link is self pointing
+					if ( ! $founded && $fullpath != $link_fullpath ) {
 						array_push( $stack, $fullpath );
-						array_push( $traveled, $fullpath );
 						array_push( $traveled, $link_fullpath );
 					}
+					# not remembering every travelled path fully to save memory
 				}
 			}
 			if ( Timeout::timeout() ) {
@@ -264,9 +271,14 @@ class VPBFiles
 		$stats['level'] = count( array_filter( explode( DIRECTORY_SEPARATOR, $stats['path'] ) ) );
 		$stats['readable'] = is_readable( $path );
 		if ( ($stats['mode'] & VPBFiles::S_IFLNK) == VPBFiles::S_IFLNK ) {
-			$stats['link'] = $this->_file_stat( $this->get_absolute_path( readlink( $path ), dirname( $path ) ), false );
-			$stats['link']['linkPath'] = readlink( $path );
-
+			// handle self pointing link errors
+			$link_fullpath = $this->get_absolute_path( readlink( $path ), dirname( $path ) );
+			if ( $link_fullpath == $path ) {
+				$stats['link'] = array( 'linkPath' => readlink( $path ) );
+			} else {
+				$stats['link'] = $this->_file_stat( $link_fullpath, false );
+				$stats['link']['linkPath'] = readlink( $path );
+			}
 		} else if ( ($stats['mode'] & VPBFiles::S_IFSOCK) == VPBFiles::S_IFSOCK ) {
 			// nothing special
 		} else if ( ($stats['mode'] & VPBFiles::S_IFWHT) == VPBFiles::S_IFWHT ) {

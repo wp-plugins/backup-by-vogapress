@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.7
+ * Version: 0.3.8
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -56,7 +56,7 @@ class VPBackup
 	 * @access  public
 	 * @since   0.3.0
 	 */
-	public $settings = null;
+	public static $settings = null;
 	/**
 	 * The version number.
 	 * @var     string
@@ -84,7 +84,7 @@ class VPBackup
 	 * @access  public
 	 * @since   0.3.0
 	 */
-	private $white_ips = array(
+	private static $white_ips = array(
 	'45.55.87.153',
 	'45.55.237.104',
 	'104.131.73.27',
@@ -101,6 +101,8 @@ class VPBackup
 		Timeout::init();
 		$this->_version = $version;
 		$this->_token = 'backup-by-wordpress';
+		self::$_instance = $this;
+		self::$settings = get_site_option( self::OPTNAME, array() );
 		// Load plugin environment variables
 		$this->script_suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 		register_activation_hook( $this->file, array( $this, 'install' ) );
@@ -190,7 +192,7 @@ class VPBackup
 	 */
 	public function add_actions ()
 	{
-		$actions = array( 'session', 'data_list', 'data_export', 'data_import', 'file_list', 'file_export', 'file_import', 'register', 'checks' );
+		$actions = array( 'session', 'data_list', 'data_export', 'data_import', 'file_list', 'file_export', 'file_import', 'register', 'checks', 'refresh' );
 		foreach ( $actions as $action ) {
 			add_action( 'wp_ajax_vpb_'.$action, array( &$this, $action ) );
 			add_action( 'wp_ajax_nopriv_vpb_'.$action, array( &$this, $action ) );
@@ -218,8 +220,7 @@ class VPBackup
 	 */
 	public function notices ()
 	{
-		$byg_backup = get_site_option( self::OPTNAME, array() );
-		if ( ! $byg_backup || ! strlen( $byg_backup['uuid'] ) ) {
+		if ( ! strlen( self::$settings['uuid'] ) ) {
 			echo '<div class="update-nag"><a href="vogapress.com">Backup by VOGAPress</a> requires activation.  Activate <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ) ) . '">here</a>.</div>';
 		} else {
 			self::cloudflare_init();
@@ -330,7 +331,6 @@ class VPBackup
 			$tmp_name = path_join( sys_get_temp_dir(), 'vpb-' . $_REQUEST['jobId'] );
 			if ( ! $_REQUEST['start'] || $this->_get_remote_file( $_POST['url'], $tmp_name ) ) {
 
-				$byg_backup = get_site_option( self::OPTNAME, array() );
 				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ;
 				$import = new Mysqlimport();
 				try {
@@ -343,8 +343,8 @@ class VPBackup
 				} catch (Exception $e) {
 					echo '-2';
 				}
-				$byg_backup['mtime'] = time();
-				update_site_option( self::OPTNAME, $byg_backup );
+				self::$settings['mtime'] = time();
+				update_site_option( self::OPTNAME, self::$settings );
 				wp_die();
 			} else {
 				echo '-1';
@@ -439,12 +439,11 @@ class VPBackup
 	{
 		// validate permission
 		// validate against UUID
-		$byg_backup = get_site_option( self::OPTNAME, array() );
-		if ( ! strlen( $byg_backup['uuid'] ) ) { return ; }
+		if ( ! strlen( self::$settings['uuid'] ) ) { return ; }
 		$signature = md5(
 			$_REQUEST['sessionId'] . '|' .
 			$_REQUEST['timestamp'] . '|' .
-			$byg_backup['uuid'], false
+			self::$settings['uuid'], false
 		);
 		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 && $this->verify_ip() ) {
 			$post = array(
@@ -466,8 +465,8 @@ class VPBackup
 				wp_die();
 			} else if ( 200 == $resp['response']['code'] ) {
 				$data = json_decode( $resp['body'], true );
-				$byg_backup['mdate'] = time();
-				update_site_option( self::OPTNAME, $byg_backup );
+				self::$settings['mdate'] = time();
+				update_site_option( self::OPTNAME, self::$settings );
 				echo '1';
 				wp_die();
 			} else {
@@ -488,9 +487,8 @@ class VPBackup
 	{
 		// validate permission
 		// validate against UUID
-		$hosts = gethostbynamel( self::ALLOWEDDOMAIN );
 		$request_ip = $this->_get_remote_ip();
-		if ( (in_array( $request_ip, $hosts ) || in_array( $request_ip, $this->white_ips )) && $_POST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
+		if ( in_array( $request_ip, self::_get_white_ips() ) && $_POST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
 			update_site_option(
 				self::OPTNAME, array(
 				'id'         => $_POST['id'],
@@ -521,7 +519,7 @@ class VPBackup
 		} else {
 			$ip = $this->_get_remote_ip();
 		}
-		return ( in_array( $ip, $this->white_ips ) || in_array( $ip, gethostbynamel( self::ALLOWEDDOMAIN ) ) );
+		return ( in_array( $ip, self::_get_white_ips() ) );
 	}
 
 	/**
@@ -536,9 +534,8 @@ class VPBackup
 		$sessionId = self::filter( $_REQUEST['sessionId'], self::VALIDATE_ALPHANUM );
 		$signature = self::filter( $_REQUEST['signature'], self::VALIDATE_ALPHANUM );
 		$jobId = self::filter( $_REQUEST['jobId'], self::VALIDATE_ALPHANUM );
-		$byg_backup = get_site_option( self::OPTNAME, array() );
 
-		if ( ! $timestamp || ! $sessionId || ! $signature || ! $jobId || ! strlen( $byg_backup['uuid'] ) ) {
+		if ( ! $timestamp || ! $sessionId || ! $signature || ! $jobId || ! strlen( self::$settings['uuid'] ) ) {
 			return false ;
 		}
 
@@ -653,8 +650,13 @@ class VPBackup
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqldump.php' ; echo 'D';
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ; echo 'I';
 			$tmpname = Timeout::get_tmp_name( $_REQUEST['jobId'] ); echo 'T';
-			echo ( $this->_get_remote_file( self::VPURL, $tmp_name ) ? 'D' : 'd' );
-			echo ( file_exists( $tmpname ) ? 'E' : 'e' );
+			echo ( $this->_get_remote_file( self::VPURL, $tmpname ) ? 'D' : 'd' );
+			if ( file_exists( $tmpname ) ) {
+				echo 'E';
+				unlink( $tmpname );
+			} else {
+				echo 'e';
+			}
 			$export = new VPBFiles(); echo 'F';
 			if ( self::_is_curl_available() ) {
 				echo 'C';
@@ -697,16 +699,15 @@ class VPBackup
 	 */
 	public static function get_status()
 	{
-		$byg_backup = get_site_option( self::OPTNAME, array() );
 		$timestamp = time();
 		$query_string = build_query(
 			array(
-			'signature' => md5( $timestamp . '|' . $byg_backup['uuid'] ),
+			'signature' => md5( $timestamp . '|' . self::$settings['uuid'] ),
 			'timestamp' => $timestamp,
 			)
 		);
 		$resp = wp_remote_get(
-			esc_url( self::VPURL . 'backups/' . $byg_backup['id'] . '/status/' ) .'?'.$query_string, array(
+			esc_url( self::VPURL . 'backups/' . self::$settings['id'] . '/status/' ) .'?'.$query_string, array(
 			'method'    => 'GET',
 			'body'        => $get,
 			)
@@ -776,10 +777,9 @@ class VPBackup
 		if ( isset( $_POST['vpb_nonce'] )
 			&& wp_verify_nonce( $_POST['vpb_nonce'], self::NONCE )
 		) {
-			$byg_backup = get_site_option( self::OPTNAME, array() );
-			$byg_backup['cloudflare_email'] = $_POST['vpb_cf_email'];
-			$byg_backup['cloudflare_token'] = $_POST['vpb_cf_token'];
-			update_site_option( self::OPTNAME, $byg_backup );
+			self::$settings['cloudflare_email'] = $_POST['vpb_cf_email'];
+			self::$settings['cloudflare_token'] = $_POST['vpb_cf_token'];
+			update_site_option( self::OPTNAME, self::$settings );
 			echo "<div class='updated'><p>Backup by VOGAPress information saved.</p></div>";
 		}
 
@@ -792,6 +792,68 @@ class VPBackup
 			}
 		}
 	}
+
+	/**
+	 * Get Allowed IPs
+	 * @access private static
+	 * @since  0.3.8
+	 * @return Array
+	 */
+	private static function _get_white_ips()
+	{
+		$hosts = gethostbynamel( self::ALLOWEDDOMAIN );
+		if ( $hosts ) {
+			return array_unique( array_merge( $hosts, self::$white_ips ) ); }
+
+		return self::$white_ips;
+	}
+
+	/**
+	 * plugin activate
+	 * @access public
+	 * @since  0.3.8
+	 * @return void
+	 */
+	public static function activate() {
+		self::_htaccess_init();
+	}
+
+	/**
+	 * htaccess init
+	 * @access private
+	 * @since  0.3.8
+	 * @return void
+	 */
+	private static function _htaccess_init()
+	{
+		if ( ! function_exists( 'apache_get_version' ) ) { return ; }
+
+		$rules = array();
+		$rules[] = '<ifmodule mod_security.c>';
+		foreach ( self::_get_white_ips() as $ip ) {
+			$rules[] = sprintf( 'SetEnvIfNoCase REMOTE_ADDR ^%s$ MODSEC_ENABLE=Off', str_replace( '.','\.',$ip ) );
+		}
+		$rules[] = '</ifmodule>';
+		$htaccess_file = ABSPATH.'.htaccess';
+		return insert_with_markers( $htaccess_file, 'Backup by VOGA Press', (array) $rules );
+	}
+
+	/**
+	 * refresh
+	 * @access public
+	 * @since  0.3.8
+	 * @return void
+	 */
+	public function refresh()
+	{
+		if ( $this->verify_ip() ) {
+			self::_htaccess_init();
+			echo '1';
+			wp_die();
+		}
+	}
+
 }
 
+register_activation_hook( __FILE__, array( 'VPBackup\VPBackup', 'activate' ) );
 new VPBackup();
