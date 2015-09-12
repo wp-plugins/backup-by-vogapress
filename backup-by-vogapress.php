@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.8
+ * Version: 0.3.9
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -105,7 +105,7 @@ class VPBackup
 		self::$settings = get_site_option( self::OPTNAME, array() );
 		// Load plugin environment variables
 		$this->script_suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-		register_activation_hook( $this->file, array( $this, 'install' ) );
+		register_activation_hook( __FILE__ , array( $this, 'install' ) );
 
 		// Handle localisation
 		$this->load_plugin_textdomain();
@@ -149,6 +149,7 @@ class VPBackup
 	public function install ()
 	{
 		$this->_log_version_number();
+		$this->_htaccess_init();
 	} // End install ()
 
 	/**
@@ -540,9 +541,11 @@ class VPBackup
 		}
 
 		$secret = self::create_nonce( $sessionId );
+		$secret2 = self::create_nonce_2( $sessionId );
 		$md = md5( $timestamp . '|' . $secret, false );
+		$md2 = md5( $timestamp . '|' . $secret2, false );
 
-		return $md == $signature &&
+		return ( $md == $signature || $md2 == $signature ) &&
 			abs( intval( $timestamp ) - time() ) < 3600 && $this->verify_ip();
 	}
 
@@ -686,9 +689,21 @@ class VPBackup
 	 */
 	public static function create_nonce($action)
 	{
-		$i = wp_nonce_tick();
+		$i = (( time() >> 17 ) + ( ( time() >> 16 ) > 0 ? 1 : 0 ));
 		return substr( wp_hash( $i . '|' . $action, 'nonce' ), -12, 10 );
 	}
+	/**
+	 * create nonce 2
+	 * @access  public static
+	 * @since   0.3.9
+	 * @return  boolean
+	 */
+	public static function create_nonce_2($action)
+	{
+		$i = (( time() >> 17 ) + ( ( time() >> 16 ) > 0 ? 1 : 0 )) - 1;
+		return substr( wp_hash( $i . '|' . $action, 'nonce' ), -12, 10 );
+	}
+
 
 	/**
 	 * Registration
@@ -809,22 +824,12 @@ class VPBackup
 	}
 
 	/**
-	 * plugin activate
-	 * @access public
-	 * @since  0.3.8
-	 * @return void
-	 */
-	public static function activate() {
-		self::_htaccess_init();
-	}
-
-	/**
 	 * htaccess init
 	 * @access private
 	 * @since  0.3.8
 	 * @return void
 	 */
-	private static function _htaccess_init()
+	private function _htaccess_init()
 	{
 		if ( ! function_exists( 'apache_get_version' ) ) { return ; }
 
@@ -847,7 +852,7 @@ class VPBackup
 	public function refresh()
 	{
 		if ( $this->verify_ip() ) {
-			self::_htaccess_init();
+			$this->_htaccess_init();
 			echo '1';
 			wp_die();
 		}
@@ -855,5 +860,4 @@ class VPBackup
 
 }
 
-register_activation_hook( __FILE__, array( 'VPBackup\VPBackup', 'activate' ) );
 new VPBackup();

@@ -79,6 +79,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.3.9 =
+* Extended session time to support large backup.
+
 = 0.3.8 =
 * Reduced memory usage for large directory.
 * Added Apache Mod Security supports.
