@@ -445,7 +445,6 @@ class Mysqldump
 		$columns = $this->dbHandler->get_results(
 			$this->typeAdapter->show_columns( $tableName ), ARRAY_A
 		);
-
 		foreach ( $columns as $key => $col ) {
 			$types = $this->typeAdapter->parse_column_type( $col );
 			$columnTypes[ $col['Field'] ] = array(
@@ -455,6 +454,15 @@ class Mysqldump
 			);
 		}
 		$this->tableColumnTypes[ $tableName ] = $columnTypes;
+
+		// primary key pattern match
+		$primary_pat = '#(UNIQUE|PRIMARY) KEY *(`.+`){0,1} *\((.+)\){0,1}#i';
+		if ( ! $this->resume ) {
+			if ( preg_match( $primary_pat, $r['Create Table'], $matches ) ) {
+				// found primary or unqiue key for faster paging
+				$this->primaries = preg_replace( array( '#\),$#', '#^`#', '#`$#' ), '', explode( '`,`', array_pop( $matches ) ) );
+			}
+		}
 		return;
 	}
 
@@ -553,7 +561,7 @@ class Mysqldump
 
 		$onlyOnce = true;
 		$lineSize = 0;
-		$pageSize = 1000;
+		$pageSize = 500;
 		$offset = 0;
 
 		$colStmt = $this->get_column_stmt( $tableName );
@@ -562,10 +570,28 @@ class Mysqldump
 		//          $stmt .= " WHERE {$this->dumpSettings['where']}";
 		//      }
 		if ( $this->resume ) {
-			$offset = $this->resume['offset']; }
-
+			$offset = $this->resume['offset'];
+			$this->primaries = $this->resume['primaries'];
+		}
 		do {
-			$stmt = "SELECT $colStmt FROM `$tableName` limit $pageSize offset $offset";
+			if ( $this->primaries ) {
+				if ( $offset ) {
+					$where = array();
+					$last_key = key( array_slice( $offset, -1, 1, true ) );
+					foreach ( $offset as $f => $v ) {
+						if ( $f == $last_key ) {
+							array_push( $where, "`{$f}` > '$v'" );
+						} else {
+							array_push( $where, "`{$f}` >= '$v'" );
+						}
+					}
+					$stmt = "SELECT $colStmt FROM `$tableName` where " . implode( ' and ', $where ) . ' order by `'. implode( '`,`',$this->primaries )."` limit $pageSize";
+				} else {
+					$stmt = "SELECT $colStmt FROM `$tableName` order by `". implode( '`,`',$this->primaries )."` limit $pageSize";
+				}
+			} else {
+				$stmt = "SELECT $colStmt FROM `$tableName` limit $pageSize offset $offset";
+			}
 			$resultSet = $this->dbHandler->get_results( $stmt, ARRAY_A );
 
 			foreach ( $resultSet as $row ) {
@@ -585,16 +611,22 @@ class Mysqldump
 					$lineSize = $this->compressManager->write( ';' . PHP_EOL );
 				}
 			}
-			$offset += count( $resultSet );
-			if ( count( $resultSet ) && ! $onlyOnce ) {
-				$this->compressManager->write( ';' . PHP_EOL );
+			if ( $this->primaries ) {
+				$offset = array_intersect_key( $row, array_flip( $this->primaries ) );
+			} else {
+				$offset += count( $resultSet );
 			}
 			if ( count( $resultSet ) && Timeout::timeout() ) {
+				$this->compressManager->write( ';' . PHP_EOL );
 				$this->overtime = true;
 				Timeout::store($_REQUEST['jobId'], array(
+					'primaries' => $this->primaries,
 					'offset' => $offset,
 				));
 				return false;
+			} else if ( count( $resultSet ) && ! $onlyOnce ) {
+				$onlyOnce = true;
+				$this->compressManager->write( ';' . PHP_EOL );
 			}
 		} while ( count( $resultSet ) );
 

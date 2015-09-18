@@ -79,6 +79,15 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.4.2 =
+* Included more Proxy IP address lookup
+
+= 0.4.1 =
+* Enabled curl data export
+
+= 0.4.0 =
+* Improved MySQL dump performance for large table
+
 = 0.3.9 =
 * Extended session time to support large backup.
 

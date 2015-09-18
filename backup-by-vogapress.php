@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.3.9
+ * Version: 0.4.2
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.3.7';
+	CONST VERSION		= '0.4.1';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -328,9 +328,9 @@ class VPBackup
 	 */
 	public function data_import ()
 	{
-		if ( $this->verify_request() && $this->verify_url( $_POST['url'] ) ) {
+		if ( $this->verify_request() && $this->verify_url( $_REQUEST['url'] ) ) {
 			$tmp_name = path_join( sys_get_temp_dir(), 'vpb-' . $_REQUEST['jobId'] );
-			if ( ! $_REQUEST['start'] || $this->_get_remote_file( $_POST['url'], $tmp_name ) ) {
+			if ( ! $_REQUEST['start'] || $this->_get_remote_file( $_REQUEST['url'], $tmp_name ) ) {
 
 				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ;
 				$import = new Mysqlimport();
@@ -393,10 +393,10 @@ class VPBackup
 	 */
 	public function file_import ()
 	{
-		if ( $this->verify_request() && (empty($_POST['url']) || $this->verify_url( $_POST['url'] )) ) {
+		if ( $this->verify_request() && (empty($_REQUEST['url']) || $this->verify_url( $_REQUEST['url'] )) ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$import = new VPBFiles();
-			if ( $import->upload( $_POST ) ) {
+			if ( $import->upload( $_REQUEST ) ) {
 				echo '1';
 			} else {
 				echo '-1';
@@ -574,12 +574,13 @@ class VPBackup
 		} else {
 			$headers = $_SERVER;
 		}
-		if ( array_key_exists( 'X-Forwarded-For', $headers ) && self::filter( $headers['X-Forwarded-For'], self::VALIDATE_IP ) ) {
-			$the_ip = $headers['X-Forwarded-For'];
-		} elseif ( array_key_exists( 'HTTP_X_FORWARDED_FOR', $headers ) && self::filter( $headers['HTTP_X_FORWARDED_FOR'], self::VALIDATE_IP ) ) {
-			$the_ip = $headers['HTTP_X_FORWARDED_FOR'];
-		} else {
-			$the_ip = self::filter( $_SERVER['REMOTE_ADDR'], self::VALIDATE_IP );
+		$the_ip = '';
+		$fields = array( 'HTTP_CLIENT_IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
+		foreach ( $fields as $field ) {
+			if ( array_key_exists( $field, $headers ) && self::filter( $headers[ $field ], self::VALIDATE_IP ) ) {
+				$the_ip = $headers[ $field ];
+				break;
+			}
 		}
 		return $the_ip;
 	}

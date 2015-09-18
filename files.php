@@ -113,8 +113,9 @@ class VPBFiles
 	public function upload ($stats)
 	{
 		$path = $this->get_absolute_path( $stats['path'] );
-		if ( ! empty($_POST['url']) ) {
-			$resp = wp_remote_get( $_POST['url'], array( 'stream' => true, 'filename' => $path ) );
+
+		if ( ! empty($stats['url']) ) {
+			$resp = wp_remote_get( $stats['url'], array( 'stream' => true, 'filename' => $path ) );
 			if ( is_wp_error( $resp ) || 200 != $resp['response']['code'] ) {
 				return false;
 			}
