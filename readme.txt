@@ -79,6 +79,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.4.3 =
+* Added flexible export runtime
+
 = 0.4.2 =
 * Included more Proxy IP address lookup
 

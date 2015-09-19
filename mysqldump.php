@@ -611,10 +611,14 @@ class Mysqldump
 					$lineSize = $this->compressManager->write( ';' . PHP_EOL );
 				}
 			}
-			if ( $this->primaries ) {
-				$offset = array_intersect_key( $row, array_flip( $this->primaries ) );
+			if ( count( $resultSet ) ) {
+				if ( $this->primaries ) {
+					$offset = array_intersect_key( $row, array_flip( $this->primaries ) );
+				} else {
+					$offset += count( $resultSet );
+				}
 			} else {
-				$offset += count( $resultSet );
+				$offset = null;
 			}
 			if ( count( $resultSet ) && Timeout::timeout() ) {
 				$this->compressManager->write( ';' . PHP_EOL );

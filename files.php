@@ -206,7 +206,7 @@ class VPBFiles
 	public function glob( $path, $filename = 'php://output' )
 	{
 		$this->basePath = $path;
-		$this->fileHandle = fopen( $filename, 'wb' );
+		$this->fileHandle = fopen( $filename, 'ab' );
 		clearstatcache();
 		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( ! $resume ) {

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.2
+ * Version: 0.4.3
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.1';
+	CONST VERSION		= '0.4.3';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -575,12 +575,24 @@ class VPBackup
 			$headers = $_SERVER;
 		}
 		$the_ip = '';
-		$fields = array( 'HTTP_CLIENT_IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
+		$fields = array( 'HTTP_CLIENT_IP', 'X-Real-IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
 		foreach ( $fields as $field ) {
-			if ( array_key_exists( $field, $headers ) && self::filter( $headers[ $field ], self::VALIDATE_IP ) ) {
+			if ( array_key_exists( $field, $headers ) && strpos( $headers[ $field ], ',' ) ) {
+				// it's csv values
+				$the_ip = array_unshift( array_map( 'trim',explode( ',', $headers[ $field ] ) ) );
+
+			} else if ( array_key_exists( $field, $headers ) ) {
 				$the_ip = $headers[ $field ];
-				break;
+
 			}
+			if ( strlen( $the_ip ) ) {
+				// remove port
+				$the_ip = preg_replace( '#:.*$#','', $the_ip );
+				if ( self::filter( $the_ip, self::VALIDATE_IP ) ) {
+					break;
+				}
+			}
+			$the_ip = '';
 		}
 		return $the_ip;
 	}
