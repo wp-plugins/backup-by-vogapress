@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.3
+ * Version: 0.4.4
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.3';
+	CONST VERSION		= '0.4.4';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -85,9 +85,8 @@ class VPBackup
 	 * @since   0.3.0
 	 */
 	private static $white_ips = array(
-	'45.55.87.153',
-	'45.55.237.104',
-	'104.131.73.27',
+	'45.55.245.94',
+	'104.236.17.183',
 	);
 
 	/**
@@ -248,7 +247,7 @@ class VPBackup
 			if ( self::_is_curl_available() ) {
 				$filename = Timeout::get_tmp_name( $_REQUEST['jobId'] );
 			}
-			$handle = fopen( $filename, 'wb' );
+			$handle = fopen( $filename, ( $_REQUEST['start'] ? 'wb' : 'ab' ) );
 
 			fwrite( $handle,'[' );
 			foreach ( $wpdb->get_results( $adapter->show_tables( DB_NAME ), ARRAY_N ) as $row ) {
@@ -446,7 +445,7 @@ class VPBackup
 			$_REQUEST['timestamp'] . '|' .
 			self::$settings['uuid'], false
 		);
-		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 && $this->verify_ip() ) {
+		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 ) {
 			$post = array(
 				'sessionSecret'	=> self::create_nonce( $_REQUEST['sessionId'] ),
 				'sessionId'    	=> $_REQUEST['sessionId'],
@@ -454,6 +453,7 @@ class VPBackup
 				'paths'		=> $this->_get_paths(),
 				'wpversion'	=> get_bloginfo( 'version' ),
 				'curl'		=> self::_is_curl_available(),
+				'nonce'		=> $_REQUEST['nonce'],
 			);
 			$resp = wp_remote_post(
 				esc_url( self::VPURL . 'jobs/session/' . $_REQUEST['sessionId'] ), array(
@@ -467,6 +467,11 @@ class VPBackup
 			} else if ( 200 == $resp['response']['code'] ) {
 				$data = json_decode( $resp['body'], true );
 				self::$settings['mdate'] = time();
+				if ( $data['valid'] ) {
+					self::$settings['referer_names'] = $this->_detect_ip_field();
+				} else {
+					self::$settings['referer_names'] = null;
+				}
 				update_site_option( self::OPTNAME, self::$settings );
 				echo '1';
 				wp_die();
@@ -488,12 +493,12 @@ class VPBackup
 	{
 		// validate permission
 		// validate against UUID
-		$request_ip = $this->_get_remote_ip();
-		if ( in_array( $request_ip, self::_get_white_ips() ) && $_POST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
+		if ( $_POST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
 			update_site_option(
 				self::OPTNAME, array(
-				'id'         => $_POST['id'],
-				'uuid'        => $_POST['uuid'],
+				'id'         	=> $_POST['id'],
+				'uuid'        	=> $_POST['uuid'],
+				'referer_names' => null,
 				)
 			);
 			echo '1';
@@ -513,14 +518,14 @@ class VPBackup
 			require_once(dirname( __FILE__ ).DIRECTORY_SEPARATOR.'cloudflareproxy.php');
 
 			if ( ! CloudFlareProxy::in_range( $_SERVER['REMOTE_ADDR'] ) ) {
-				$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+				$ips = array( $_SERVER['HTTP_CF_CONNECTING_IP'] );
 			} else {
-				$ip = $this->_get_remote_ip();
+				$ips = $this->_get_remote_ip();
 			}
 		} else {
-			$ip = $this->_get_remote_ip();
+			$ips = $this->_get_remote_ip();
 		}
-		return ( in_array( $ip, self::_get_white_ips() ) );
+		return ( 0 < count( array_intersect( self::_get_white_ips(), $ips ) ) );
 	}
 
 	/**
@@ -575,11 +580,16 @@ class VPBackup
 			$headers = $_SERVER;
 		}
 		$the_ip = '';
-		$fields = array( 'HTTP_CLIENT_IP', 'X-Real-IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
+		$the_ips = array();
+		if ( self::$settings['referer_names'] ) {
+			$fields = array_intersect( array( 'HTTP_CLIENT_IP', 'X-Real-IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' ), self::$settings['referer_names'] );
+		} else {
+			$fields = array();
+		}
 		foreach ( $fields as $field ) {
 			if ( array_key_exists( $field, $headers ) && strpos( $headers[ $field ], ',' ) ) {
 				// it's csv values
-				$the_ip = array_unshift( array_map( 'trim',explode( ',', $headers[ $field ] ) ) );
+				$the_ip = array_unshift( array_map( 'trim', explode( ',', $headers[ $field ] ) ) );
 
 			} else if ( array_key_exists( $field, $headers ) ) {
 				$the_ip = $headers[ $field ];
@@ -589,12 +599,12 @@ class VPBackup
 				// remove port
 				$the_ip = preg_replace( '#:.*$#','', $the_ip );
 				if ( self::filter( $the_ip, self::VALIDATE_IP ) ) {
-					break;
+					array_push( $the_ips, $the_ip );
 				}
 			}
 			$the_ip = '';
 		}
-		return $the_ip;
+		return $the_ips;
 	}
 
 	/**
@@ -869,6 +879,45 @@ class VPBackup
 			echo '1';
 			wp_die();
 		}
+	}
+
+	/**
+	 * detect ip field
+	 * @access private
+	 * @since  0.4.4
+	 * @return array
+	 */
+	private function _detect_ip_field() {
+		$white_ips = $this->_get_white_ips();
+
+		if ( function_exists( 'apache_request_headers' ) ) {
+			$headers = apache_request_headers();
+		} else {
+			$headers = $_SERVER;
+		}
+		$the_ip = '';
+		$fields = array( 'HTTP_CLIENT_IP', 'X-Real-IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
+		$ret = array();
+		foreach ( $fields as $field ) {
+			if ( array_key_exists( $field, $headers ) && strpos( $headers[ $field ], ',' ) ) {
+				// it's csv values
+				$the_ip = array_unshift( array_map( 'trim',explode( ',', $headers[ $field ] ) ) );
+
+			} else if ( array_key_exists( $field, $headers ) ) {
+				$the_ip = $headers[ $field ];
+
+			}
+			if ( strlen( $the_ip ) ) {
+				// remove port
+				$the_ip = preg_replace( '#:.*$#','', $the_ip );
+				if ( self::filter( $the_ip, self::VALIDATE_IP ) && in_array( $the_ip, $white_ips ) ) {
+					array_push( $ret, $field );
+				}
+			}
+			$the_ip = '';
+		}
+		return $ret;
+
 	}
 
 }

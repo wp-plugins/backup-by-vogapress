@@ -866,7 +866,7 @@ class CompressNone extends CompressManagerFactory
 
 	public function open($filename)
 	{
-		$this->fileHandler = fopen( $filename, 'ab' );
+		$this->fileHandler = fopen( $filename, ( $_REQUEST['start'] ? 'wb' : 'ab' ) );
 		if ( false === $this->fileHandler ) {
 			throw new Exception( 'Output file is not writable' );
 		}
