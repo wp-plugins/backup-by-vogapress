@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.4
+ * Version: 0.4.5
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.4';
+	CONST VERSION		= '0.4.5';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -221,12 +221,16 @@ class VPBackup
 	public function notices ()
 	{
 		if ( ! strlen( self::$settings['uuid'] ) ) {
-			echo '<div class="update-nag"><a href="vogapress.com">Backup by VOGAPress</a> requires activation.  Activate <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ) ) . '">here</a>.</div>';
+			echo '<div class="update-nag"><a href="'. esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ) ) . '" >Backup by VOGAPress</a> requires activation.  Activate <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings&registration=yes' ) ) . '">here</a>.</div>';
 		} else {
 			self::cloudflare_init();
 		}
 		if ( '1' == $_REQUEST['bygmessage'] ) {
-			echo "<div class='updated'><p>Backup by VOGAPress is activated.</p></div>";
+			if ( ! strlen( self::$settings['uuid'] ) ) {
+				echo '<div class="error"><p>Backup by VOGAPress encounters an error during acitvation. Contact <a href="https://vogapress.com/#!/app/support">Support</a> for further assistance.</p></div>';
+			} else {
+				echo '<div class="updated"><p>Backup by VOGAPress is activated.</p></div>';
+			}
 		}
 	}
 
@@ -300,7 +304,7 @@ class VPBackup
 			if ( $export ) {
 				if ( self::_is_curl_available() ) {
 					$filename = Timeout::get_tmp_name( $_REQUEST['jobId'] );
-					if ( $export->start( $filename ) ) {
+					if ( $_REQUEST['last'] ) {
 						$file = new VPBFiles();
 						if ( $file->download_curl( $filename ) ) {
 							echo '1';
@@ -308,6 +312,8 @@ class VPBackup
 							echo '-1';
 						}
 						unlink( $filename );
+					} else if ( $export->start( $filename ) ) {
+						echo '3';
 					} else {
 						echo '2';
 					}
@@ -366,16 +372,17 @@ class VPBackup
 			$export = new VPBFiles();
 			if ( self::_is_curl_available() ) {
 				$filename = Timeout::get_tmp_name( 'vpb-tmp-'.$_REQUEST['jobId'] );
-				if ( ! $export->glob( ABSPATH, $filename ) ) {
-					echo '2';
-				} else {
+				if ( $_REQUEST['last'] ) {
 					if ( $export->download_curl( $filename ) ) {
 						unlink( $filename );
 						echo '1';
 					} else {
-						unlink( $filename );
 						echo '-1';
 					}
+				} else if ( $export->glob( ABSPATH, $filename ) ) {
+					echo '3';
+				} else {
+					echo '2';
 				}
 			} else {
 				$export->glob( ABSPATH );

@@ -79,6 +79,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.4.5 =
+* Improved support for large database
+
 = 0.4.4 =
 * Added auto detection of remote IP
 

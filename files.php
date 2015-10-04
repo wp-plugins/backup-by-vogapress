@@ -213,13 +213,15 @@ class VPBFiles
 			fwrite( $this->fileHandle,'[' );
 			$traveled = [ $path ];
 			$stack 	  = [ $path ];
+			$offset	  = -1;
 		} else {
 			$traveled = $resume['traveled'];
 			$stack    = $resume['stack'];
+			$offset	  = $resume['offset'];
 		}
 		while ( $p = array_shift( $stack ) ) {
-			foreach ( scandir( $p ) as $file ) {
-				if ( '.' == $file || '..' == $file ) {
+			foreach ( scandir( $p ) as $pos => $file ) {
+				if ( '.' == $file || '..' == $file || $pos <= $offset ) {
 					continue;
 				}
 
@@ -249,15 +251,18 @@ class VPBFiles
 					}
 					# not remembering every travelled path fully to save memory
 				}
+				if ( Timeout::timeout() ) {
+					array_unshift( $stack, $p );
+					Timeout::store($_REQUEST['jobId'], array(
+						'traveled' 	=> $traveled,
+						'stack'		=> $stack,
+						'offset'	=> $pos,
+					));
+					fclose( $this->fileHandle );
+					return false;
+				}
 			}
-			if ( Timeout::timeout() ) {
-				Timeout::store($_REQUEST['jobId'], array(
-					'traveled' 	=> $traveled,
-					'stack'		=> $stack,
-				));
-				fclose( $this->fileHandle );
-				return false;
-			}
+			$offset = -1;
 		}
 		fwrite( $this->fileHandle,']' );
 		Timeout::cleanup( $_REQUEST['jobId'] );

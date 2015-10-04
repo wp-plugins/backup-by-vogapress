@@ -14,11 +14,8 @@ class Timeout {
 	static public function init() {
 		if ( isset( $_REQUEST['limit'] ) ) {
 			self::$changeable = false ;
-			self::$maxTime = intval( $_REQUEST['limit'] );
-			if ( 0 == self::$maxTime ) {
-				self::$maxTime = intval( ini_get( 'max_execution_time' ) );
-				self::$maxTime = ( self::$maxTime ? self::$maxTime : 60 );
-			}
+			self::$maxTime = intval( ini_get( 'max_execution_time' ) );
+			self::$maxTime = max( 5, ( self::$maxTime ? self::$maxTime : 30 ) - intval( $_REQUEST['limit'] ) );
 		} else {
 			self::$maxTime = intval( ini_get( 'max_execution_time' ) );
 			self::$maxTime = ( self::$maxTime ? self::$maxTime : 30 );
@@ -35,16 +32,16 @@ class Timeout {
 	static public function time_lapsed() {
 		return self::get_time() - self::$startTime;
 	}
-	static public function near_limit() {
-		// 3 seconds for margin of rounding errors
-		return (self::$maxTime - 3 <= self::time_lapsed());
+	static public function near_limit( $threshold = 5 ) {
+		// 5 seconds for margin of rounding errors
+		return (self::$maxTime - $threshold <= self::time_lapsed());
 	}
 	static public function extend_time() {
 		set_time_limit( 60 );
 		self::$maxTime += 60;
 	}
-	static public function timeout() {
-		if ( self::near_limit() ) {
+	static public function timeout($threshold = 5) {
+		if ( self::near_limit( $threshold ) ) {
 			if ( self::$changeable ) {
 				self::extend_time();
 				return false;
