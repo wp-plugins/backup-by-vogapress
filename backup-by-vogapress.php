@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.5
+ * Version: 0.4.6
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.5';
+	CONST VERSION		= '0.4.6';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -500,11 +500,11 @@ class VPBackup
 	{
 		// validate permission
 		// validate against UUID
-		if ( $_POST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
+		if ( $_REQUEST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
 			update_site_option(
 				self::OPTNAME, array(
-				'id'         	=> $_POST['id'],
-				'uuid'        	=> $_POST['uuid'],
+				'id'         	=> $_REQUEST['id'],
+				'uuid'        	=> $_REQUEST['uuid'],
 				'referer_names' => null,
 				)
 			);
@@ -581,11 +581,7 @@ class VPBackup
 	 */
 	private function _get_remote_ip()
 	{
-		if ( function_exists( 'apache_request_headers' ) ) {
-			$headers = apache_request_headers();
-		} else {
-			$headers = $_SERVER;
-		}
+		$headers = $_SERVER;
 		$the_ip = '';
 		$the_ips = array();
 		if ( self::$settings['referer_names'] ) {
@@ -861,7 +857,6 @@ class VPBackup
 	 */
 	private function _htaccess_init()
 	{
-		if ( ! function_exists( 'apache_get_version' ) ) { return ; }
 
 		$rules = array();
 		$rules[] = '<ifmodule mod_security.c>';
@@ -896,12 +891,7 @@ class VPBackup
 	 */
 	private function _detect_ip_field() {
 		$white_ips = $this->_get_white_ips();
-
-		if ( function_exists( 'apache_request_headers' ) ) {
-			$headers = apache_request_headers();
-		} else {
-			$headers = $_SERVER;
-		}
+		$headers = $_SERVER;
 		$the_ip = '';
 		$fields = array( 'HTTP_CLIENT_IP', 'X-Real-IP', 'X-Forwarded-For', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR' );
 		$ret = array();

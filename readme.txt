@@ -79,6 +79,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.4.6 =
+* Improved support for modsecurity and Apache
+
 = 0.4.5 =
 * Improved support for large database
 

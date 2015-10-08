@@ -58,7 +58,7 @@ if ( isset( $_POST['byg-nonce'] ) && wp_verify_nonce( $_POST['byg-nonce'], __FIL
 	<table class="widefat" style="margin-top:20px">
 		<tr><td style="text-align:center; padding: 20px">
 		<span id="message-icon" class="dashicons dashicons-shield" style="margin: 0 0 10px -10px"></span>
-		<h4>To thank the wonderful WordPress community, we offer FREE personal cloud backup service.  See <a target="_blank" href="https://vogapress.com/#!/#price">VOGAPress</a> for details.</h4>
+		<h4>We offer FREE personal cloud backup service.  It's our way to say thank you for the wonderful WordPress community support.  See <a target="_blank" href="https://vogapress.com/#!/#price">VOGAPress</a> for details.</h4>
 		<h4>Click the button to activate your Backup by VOGAPress.</h4>
 		<?php wp_nonce_field( __FILE__, 'byg-nonce' ); ?>
 		<p style="margin-top: 30px">
