@@ -13,7 +13,7 @@ Simplest way to manage and monitor your backups with VOGAPress cloud service. FR
 
 Do you have an adequate WordPress backup strategy to ensure you can recover from disasters and hacks?  While hosting companies often offer backup solutions to recover from hardware failure, their offerings are basic replicate and restore functions without monitoring the states of the files.  This makes it harder to detect what and when files are tempered by hackers.
 
-Backup by VOGAPress is a cloud service that backups everything: your source files, uploads, and database.  It is designed to help manage your WordPress backups by giving you more insights to the files,  and keep track plus notifiy you of the file changes.  Its easy to use interface offers visual comparison of files so you can decide the right version to restore.  Automated restore is a simple 2-clicks action with options to select individual file, file types, and, database.
+Backup by VOGAPress is a cloud service that backups everything: your source files, uploads, and database.  It is designed to help manage your WordPress backups by giving you more insights to the files.  Our cloud service keeps track and notifiy you of the file changes without putting heavy burden on your hosting.  Its easy to use interface offers visual comparison of files so you can decide the right version to restore.  Automated restore is a simple 2-clicks action with options to select individual file, file types, and, database.
 
 Replicate, Review, and Restore.  Try Backup by VOGAPress to see what you're missing.  **We offer free tier personal plan and professional business plan.  No credit card is required to register.**
 
@@ -70,20 +70,26 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Screenshots ==
 
-1. Connect WordPress to VOGAPress with the Register button.
-2. Review your server state from VOGAPress Dashboard.
-3. Manage your backups.
-4. Review the latest file changes.
-5. See the changes in details.
-6. Easy restore with a button click.
+1. Connect WordPress to VOGAPress with the Activate button.
+2. Server status of VOGAPress backup.
+3. Review your server state from VOGAPress Dashboard.
+4. Manage your backups.
+5. Review the latest file changes.
+6. See the changes in details.
+7. Easy restore with a button click.
 
 == Changelog ==
 
+= 0.4.7 =
+* Improved file handling on slower hosts
+* Fixed links pointing to WordPress root path
+* Added migration supports
+
 = 0.4.6 =
-* Improved support for modsecurity and Apache
+* Improved support of modsecurity and Apache
 
 = 0.4.5 =
-* Improved support for large database
+* Improved support of large database
 
 = 0.4.4 =
 * Added auto detection of remote IP
@@ -98,7 +104,7 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 * Enabled curl data export
 
 = 0.4.0 =
-* Improved MySQL dump performance for large table
+* Improved MySQL dump performance of large table
 
 = 0.3.9 =
 * Extended session time to support large backup.

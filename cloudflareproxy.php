@@ -70,7 +70,7 @@ class CloudFlareProxy {
 
 		static function update_whitelist() {
 			$hosts = gethostbynamel( VPBackup::ALLOWEDDOMAIN );
-			$byg_backup = get_site_option( VPBackup::OPTNAME, array() );
+			$byg_backup = VPBackup::$settings['cloudflare_wl'];
 			$keys = self::get_api_keys();
 
 			if ( $byg_backup['cloudflare'] ) {
@@ -112,8 +112,6 @@ class CloudFlareProxy {
 					return false ;
 				}
 			}
-			$byg_backup['cloudflare_wl'] = $hosts;
-			update_site_option( VPBackup::OPTNAME, $byg_backup );
-			return true;
+			return $hosts;
 		}
 }

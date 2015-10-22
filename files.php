@@ -115,13 +115,40 @@ class VPBFiles
 		$path = $this->get_absolute_path( $stats['path'] );
 
 		if ( ! empty($stats['url']) ) {
-			$resp = wp_remote_get( $stats['url'], array( 'stream' => true, 'filename' => $path ) );
-			if ( is_wp_error( $resp ) || 200 != $resp['response']['code'] ) {
-				return false;
+			$tmpPath = Timeout::get_tmp_name( $stats['path'] );
+
+			if ( $stats['start'] ) {
+				$get_params = array(
+					'stream'   => true,
+					'filename' => $tmpPath,
+				);
+				if ( isset( $stats['settings_retrieve'] ) ) {
+					$get_params['body'] = array(
+						'DB_NAME' => DB_NAME,
+						'DB_USER' => DB_USER,
+						'DB_PASSWORD' 	=> DB_PASSWORD,
+						'DB_HOST' 	=> DB_HOST,
+						'DB_CHARSET' 	=> DB_CHARSET,
+						'DB_COLLATE' 	=> DB_COLLATE,
+					);
+				}
+				$resp = wp_remote_get( $stats['url'], $get_params );
+				if ( is_wp_error( $resp ) ) {
+					return -1;
+				} else if ( 200 != $resp['response']['code'] ) {
+					return -1;
+				}
+				return 2;
+			} else {
+				if ( ! copy( $tmpPath, $path ) ) {
+					unlink( $tmpPath );
+					return -2;
+				}
+				chmod( $path, $stats['mode'] & 0777 );
+				touch( $path, $stats['mtime'] );
+				unlink( $tmpPath );
 			}
-			chmod( $path, $stats['mode'] & 0777 );
-			touch( $path, $stats['mtime'] );
-			return true;
+			return 1;
 
 		} else if ( ( $stats['mode'] & self::S_IFLNK ) == self::S_IFLNK ) {
 			// php sometimes are confused with existing file structure
@@ -159,6 +186,7 @@ class VPBFiles
 
 	public function download ($file)
 	{
+		set_time_limit( 0 );
 		$fileName = $this->get_absolute_path( $file );
 		// validate file is within the wordpress directory
 		$realPath = realpath( $fileName );
@@ -177,6 +205,7 @@ class VPBFiles
 	}
 	public function download_curl ($file)
 	{
+		set_time_limit( 0 );
 		$fileName = $this->get_absolute_path( $file );
 		$realPath = realpath( $fileName );
 
@@ -211,8 +240,8 @@ class VPBFiles
 		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( ! $resume ) {
 			fwrite( $this->fileHandle,'[' );
-			$traveled = [ $path ];
-			$stack 	  = [ $path ];
+			$traveled = [ untrailingslashit( $path ) ];
+			$stack 	  = [ untrailingslashit( $path ) ];
 			$offset	  = -1;
 		} else {
 			$traveled = $resume['traveled'];
@@ -233,7 +262,6 @@ class VPBFiles
 
 				} else if ( ( $stat['mode'] & self::S_IFLNK ) == self::S_IFLNK &&
 					($stat['link']['mode'] & self::S_IFDIR ) == self::S_IFDIR ) {
-
 					$link_fullpath = $this->get_absolute_path( $stat['link']['path'] );
 
 					# do not walk thru if we have or will backup the directory
@@ -244,6 +272,7 @@ class VPBFiles
 							break ;
 						}
 					}
+
 					# sanity check to see if the link is self pointing
 					if ( ! $founded && $fullpath != $link_fullpath ) {
 						array_push( $stack, $fullpath );

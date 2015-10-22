@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.6
+ * Version: 0.4.7
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,7 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.6';
+	CONST VERSION		= '0.4.7';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -88,6 +88,13 @@ class VPBackup
 	'45.55.245.94',
 	'104.236.17.183',
 	);
+	/**
+	 * table name
+	 * @var     string
+	 * @access  private
+	 * @since   0.4.7
+	 */
+	private $_table_name;
 
 	/**
 	 * Constructor function.
@@ -99,12 +106,19 @@ class VPBackup
 	{
 		Timeout::init();
 		$this->_version = $version;
-		$this->_token = 'backup-by-wordpress';
-		self::$_instance = $this;
-		self::$settings = get_site_option( self::OPTNAME, array() );
+		$this->_token   = 'backup-by-wordpress';
+		$this->_table_name = 'backup_by_vogapress';
+		self::$_instance   = $this;
+
 		// Load plugin environment variables
 		$this->script_suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
-		register_activation_hook( __FILE__ , array( $this, 'install' ) );
+
+		// update to latest
+		$current_version = get_site_option( $this->_token . '-version' );
+		if ( ! $current_version || $current_version != $version ) {
+			$this->install();
+		}
+		self::$settings = $this->get_option( 'settings' );
 
 		// Handle localisation
 		$this->load_plugin_textdomain();
@@ -149,6 +163,7 @@ class VPBackup
 	{
 		$this->_log_version_number();
 		$this->_htaccess_init();
+		$this->_install_tables();
 	} // End install ()
 
 	/**
@@ -251,30 +266,34 @@ class VPBackup
 			if ( self::_is_curl_available() ) {
 				$filename = Timeout::get_tmp_name( $_REQUEST['jobId'] );
 			}
-			$handle = fopen( $filename, ( $_REQUEST['start'] ? 'wb' : 'ab' ) );
-
-			fwrite( $handle,'[' );
-			foreach ( $wpdb->get_results( $adapter->show_tables( DB_NAME ), ARRAY_N ) as $row ) {
-				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'table' ) ) . ',' );
-			}
-			foreach ( $wpdb->get_results( $adapter->show_views( DB_NAME ), ARRAY_N ) as $row ) {
-				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'view' ) ) . ',' );
-			}
-			foreach ( $wpdb->get_results( $adapter->show_triggers( DB_NAME ), ARRAY_N ) as $row ) {
-				fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'trigger' ) ) . ',' );
-			}
-			fwrite( $handle,']' );
-			fclose( $handle );
-
-			if ( self::_is_curl_available() ) {
-				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
-				$file = new VPBFiles();
-				if ( $file->download_curl( $filename ) ) {
-					echo '1';
-				} else {
-					echo '-1';
+			if ( $_REQUEST['start'] ) {
+				$handle = fopen( $filename, ( $_REQUEST['start'] || ! self::_is_curl_available() ? 'wb' : 'ab' ) );
+				fwrite( $handle,'[' );
+				foreach ( $wpdb->get_results( $adapter->show_tables( DB_NAME ), ARRAY_N ) as $row ) {
+					fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'table' ) ) . ',' );
 				}
-				unlink( $filename );
+				foreach ( $wpdb->get_results( $adapter->show_views( DB_NAME ), ARRAY_N ) as $row ) {
+					fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'view' ) ) . ',' );
+				}
+				foreach ( $wpdb->get_results( $adapter->show_triggers( DB_NAME ), ARRAY_N ) as $row ) {
+					fwrite( $handle, json_encode( array( 'path' => current( $row ), 'subtype' => 'trigger' ) ) . ',' );
+				}
+				fwrite( $handle,']' );
+				fclose( $handle );
+				if ( self::_is_curl_available() ) {
+					echo '2';
+				}
+			} else {
+				if ( self::_is_curl_available() ) {
+					include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
+					$file = new VPBFiles();
+					if ( $file->download_curl( $filename ) ) {
+						echo '1';
+					} else {
+						echo '-1';
+					}
+					unlink( $filename );
+				}
 			}
 			wp_die();
 		}
@@ -335,8 +354,15 @@ class VPBackup
 	{
 		if ( $this->verify_request() && $this->verify_url( $_REQUEST['url'] ) ) {
 			$tmp_name = path_join( sys_get_temp_dir(), 'vpb-' . $_REQUEST['jobId'] );
-			if ( ! $_REQUEST['start'] || $this->_get_remote_file( $_REQUEST['url'], $tmp_name ) ) {
+			if ( $_REQUEST['start'] ) {
+				if ( $this->_get_remote_file( $_REQUEST['url'], $tmp_name ) ) {
+					echo '2';
+				} else {
+					echo '-1';
+				}
+				wp_die();
 
+			} else {
 				include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'mysqlimport.php' ;
 				$import = new Mysqlimport();
 				try {
@@ -350,11 +376,9 @@ class VPBackup
 					echo '-2';
 				}
 				self::$settings['mtime'] = time();
-				update_site_option( self::OPTNAME, self::$settings );
+				$this->update_option( 'settings', self::$settings );
 				wp_die();
-			} else {
-				echo '-1';
-				wp_die();
+
 			}
 		}
 	}
@@ -402,14 +426,11 @@ class VPBackup
 		if ( $this->verify_request() && (empty($_REQUEST['url']) || $this->verify_url( $_REQUEST['url'] )) ) {
 			include dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'files.php' ;
 			$import = new VPBFiles();
-			if ( $import->upload( $_REQUEST ) ) {
-				echo '1';
-			} else {
-				echo '-1';
-			}
+			echo $import->upload( $_REQUEST );
 			wp_die();
 		}
 	}
+
 
 	/**
 	 * file export
@@ -453,6 +474,7 @@ class VPBackup
 			self::$settings['uuid'], false
 		);
 		if ( $signature == $_REQUEST['signature'] && abs( time() - intval( $_REQUEST['timestamp'] ) ) < 3600 ) {
+			global $wpdb;
 			$post = array(
 				'sessionSecret'	=> self::create_nonce( $_REQUEST['sessionId'] ),
 				'sessionId'    	=> $_REQUEST['sessionId'],
@@ -460,6 +482,7 @@ class VPBackup
 				'paths'		=> $this->_get_paths(),
 				'wpversion'	=> get_bloginfo( 'version' ),
 				'curl'		=> self::_is_curl_available(),
+				'tablePrefix'	=> $wpdb->base_prefix,
 				'nonce'		=> $_REQUEST['nonce'],
 			);
 			$resp = wp_remote_post(
@@ -479,7 +502,7 @@ class VPBackup
 				} else {
 					self::$settings['referer_names'] = null;
 				}
-				update_site_option( self::OPTNAME, self::$settings );
+				$this->update_option( 'settings', self::$settings );
 				echo '1';
 				wp_die();
 			} else {
@@ -501,8 +524,8 @@ class VPBackup
 		// validate permission
 		// validate against UUID
 		if ( $_REQUEST['nonce'] == self::create_nonce( 'byg-token-register' ) ) {
-			update_site_option(
-				self::OPTNAME, array(
+			$this->update_option(
+				'settings', array(
 				'id'         	=> $_REQUEST['id'],
 				'uuid'        	=> $_REQUEST['uuid'],
 				'referer_names' => null,
@@ -618,6 +641,7 @@ class VPBackup
 	 */
 	private function _get_remote_file( $src, $dst )
 	{
+		set_time_limit( 0 );
 		$resp = wp_remote_get(
 			$src, array(
 			'stream' => true,
@@ -820,7 +844,7 @@ class VPBackup
 		) {
 			self::$settings['cloudflare_email'] = $_POST['vpb_cf_email'];
 			self::$settings['cloudflare_token'] = $_POST['vpb_cf_token'];
-			update_site_option( self::OPTNAME, self::$settings );
+			$this->update_option( 'settings', self::$settings );
 			echo "<div class='updated'><p>Backup by VOGAPress information saved.</p></div>";
 		}
 
@@ -828,8 +852,12 @@ class VPBackup
 		if ( ! CloudFlareProxy::get_api_keys() ) {
 			echo '<div class="update-nag"><p>Backup by VOGAPRess requires CloudFlare account information to configure the firewall settings. <a href="' . esc_url( network_admin_url( 'admin.php?page=backup-by-wordpress-settings' ) ) . '">Here</a></p></div>';
 		} else {
-			if ( ! CloudFlareProxy::update_whitelist() ) {
+			$whitelist = CloudFlareProxy::update_whitelist();
+			if ( ! $whitelist ) {
 				echo '<div class="error"><p>Backup by VOGAPRess failed to update CloudFlare firewall settings.</p></div>';
+			} else {
+				self::$settings['cloudflare_wl'] = $whitelist;
+				$this->update_option( 'settings', self::$settings );
 			}
 		}
 	}
@@ -857,6 +885,10 @@ class VPBackup
 	 */
 	private function _htaccess_init()
 	{
+
+		if ( ! function_exists( 'insert_with_markers' ) ) {
+			include( ABSPATH . '/wp-admin/includes/misc.php' );
+		}
 
 		$rules = array();
 		$rules[] = '<ifmodule mod_security.c>';
@@ -916,7 +948,78 @@ class VPBackup
 		return $ret;
 
 	}
+	/**
+	 * install tables
+	 * @access private
+	 * @since  0.4.7
+	 * @return void
+	 */
+	private function _install_tables()
+	{
+		global $wpdb;
+		$table_name = $this->_table_name;
+		$charset_collate = $wpdb->get_charset_collate();
 
+		$sql = "CREATE TABLE $table_name (
+			id mediumint(9) NOT NULL AUTO_INCREMENT,
+			name tinytext NOT NULL,
+			text text NOT NULL,
+			UNIQUE KEY id (id),
+			INDEX name (name(255))
+		) $charset_collate;";
+
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		dbDelta( $sql );
+
+		// importing from existing
+		$settings = $this->get_option( 'settings' );
+		if ( ! $settings ) {
+			$settings = get_site_option( self::OPTNAME, array() );
+			$wpdb->insert(
+				$this->_table_name,
+				array(
+					'name' => 'settings',
+					'text' => json_encode( $settings ),
+				)
+			);
+		}
+	}
+	/**
+	 * update option
+	 * @access private
+	 * @since  0.4.7
+	 * @return void
+	 */
+	private function update_option($name, $values)
+	{
+		global $wpdb;
+		$wpdb->update(
+			$this->_table_name,
+			array(
+				'name' => $name,
+				'text' => json_encode( $values ),
+			),
+			array(
+				'name' => $name,
+			)
+		);
+	}
+	/**
+	 * update option
+	 * @access private
+	 * @since  0.4.7
+	 * @return void
+	 */
+	private function get_option($name)
+	{
+		global $wpdb;
+		$val = $wpdb->get_results($wpdb->prepare("select * from {$this->_table_name} where name=%s",
+		array( $name )), ARRAY_A);
+
+		if ( empty( $val ) ) { return false ; }
+
+		return json_decode( $val[0]['text'], true );
+	}
 }
 
 new VPBackup();
