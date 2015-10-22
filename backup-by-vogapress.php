@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.7
+ * Version: 0.4.8
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -37,7 +37,8 @@ class VPBackup
 	CONST ALLOWEDDOMAIN 	= 'vogapress.com';
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
-	CONST VERSION		= '0.4.7';
+	CONST TABLENAME		= 'backup_by_vogapress';
+	CONST VERSION		= '0.4.8';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;
@@ -88,13 +89,6 @@ class VPBackup
 	'45.55.245.94',
 	'104.236.17.183',
 	);
-	/**
-	 * table name
-	 * @var     string
-	 * @access  private
-	 * @since   0.4.7
-	 */
-	private $_table_name;
 
 	/**
 	 * Constructor function.
@@ -107,7 +101,6 @@ class VPBackup
 		Timeout::init();
 		$this->_version = $version;
 		$this->_token   = 'backup-by-wordpress';
-		$this->_table_name = 'backup_by_vogapress';
 		self::$_instance   = $this;
 
 		// Load plugin environment variables
@@ -118,7 +111,7 @@ class VPBackup
 		if ( ! $current_version || $current_version != $version ) {
 			$this->install();
 		}
-		self::$settings = $this->get_option( 'settings' );
+		self::$settings = VPBackup::get_option( 'settings' );
 
 		// Handle localisation
 		$this->load_plugin_textdomain();
@@ -957,7 +950,7 @@ class VPBackup
 	private function _install_tables()
 	{
 		global $wpdb;
-		$table_name = $this->_table_name;
+		$table_name = self::TABLENAME ;
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE $table_name (
@@ -972,11 +965,11 @@ class VPBackup
 		dbDelta( $sql );
 
 		// importing from existing
-		$settings = $this->get_option( 'settings' );
+		$settings = VPBackup::get_option( 'settings' );
 		if ( ! $settings ) {
 			$settings = get_site_option( self::OPTNAME, array() );
 			$wpdb->insert(
-				$this->_table_name,
+				self::TABLENAME,
 				array(
 					'name' => 'settings',
 					'text' => json_encode( $settings ),
@@ -994,7 +987,7 @@ class VPBackup
 	{
 		global $wpdb;
 		$wpdb->update(
-			$this->_table_name,
+			self::TABLENAME,
 			array(
 				'name' => $name,
 				'text' => json_encode( $values ),
@@ -1005,15 +998,15 @@ class VPBackup
 		);
 	}
 	/**
-	 * update option
-	 * @access private
+	 * get option
+	 * @access public
 	 * @since  0.4.7
 	 * @return void
 	 */
-	private function get_option($name)
+	public static function get_option($name)
 	{
 		global $wpdb;
-		$val = $wpdb->get_results($wpdb->prepare("select * from {$this->_table_name} where name=%s",
+		$val = $wpdb->get_results($wpdb->prepare('select * from '.self::TABLENAME.' where name=%s',
 		array( $name )), ARRAY_A);
 
 		if ( empty( $val ) ) { return false ; }
