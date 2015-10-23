@@ -80,6 +80,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.4.9 =
+* Fixed error in file export and import
+
 = 0.4.8 =
 * Fixed settings page display after registration
 

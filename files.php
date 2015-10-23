@@ -240,8 +240,8 @@ class VPBFiles
 		$resume = ( $_REQUEST['start'] ? false : Timeout::retrieve( $_REQUEST['jobId'] ) );
 		if ( ! $resume ) {
 			fwrite( $this->fileHandle,'[' );
-			$traveled = [ untrailingslashit( $path ) ];
-			$stack 	  = [ untrailingslashit( $path ) ];
+			$traveled = Array( untrailingslashit( $path ) );
+			$stack 	  = Array( untrailingslashit( $path ) );
 			$offset	  = -1;
 		} else {
 			$traveled = $resume['traveled'];
