@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Backup by VOGA Press
- * Version: 0.4.9
+ * Version: 0.5.0
  * Plugin URI: http://vogapress.com/
  * Description: Simplest way to manage your backups with VOGAPress cloud service. Added with file monitoring to let you know when your website has been compromised.
  * Author: VOGA Press
@@ -38,7 +38,7 @@ class VPBackup
 	CONST OPTNAME		= 'byg-backup';
 	CONST NONCE		= 'vogapress-backup';
 	CONST TABLENAME		= 'backup_by_vogapress';
-	CONST VERSION		= '0.4.9';
+	CONST VERSION		= '0.5.0';
 	CONST VALIDATE_NUM	= 1;
 	CONST VALIDATE_ALPHANUM	= 2;
 	CONST VALIDATE_IP	= 3;

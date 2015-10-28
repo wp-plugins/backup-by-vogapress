@@ -79,6 +79,8 @@ class Mysqldump
 		$dumpSettingsDefault = array(
 		'include-tables' => array(),
 		'exclude-tables' => array(),
+		'include-views' => array(),
+		'include-triggers' => array(),
 		'compress' => Mysqldump::NONE,
 		'no-data' => false,
 		'add-drop-table' => true,
@@ -349,7 +351,7 @@ class Mysqldump
 			}
 		} else {
 			// include only the tables mentioned in include-tables
-			foreach ( $this->dbHandler->get_results( $this->typeAdapter->show_views( $this->db ), ARRAY_N ) as $row ) {
+			foreach ( $this->dbHandler->get_results( $this->typeAdapter->show_triggers( $this->db ), ARRAY_N ) as $row ) {
 				if ( in_array( current( $row ), $this->dumpSettings['include-triggers'], true ) ) {
 					array_push( $this->triggers, current( $row ) );
 					$elem = array_search(
@@ -561,7 +563,7 @@ class Mysqldump
 
 		$onlyOnce = true;
 		$lineSize = 0;
-		$pageSize = 500;
+		$pageSize = 50;
 		$offset = 0;
 
 		$colStmt = $this->get_column_stmt( $tableName );
