@@ -112,6 +112,7 @@ class VPBFiles
 
 	public function upload ($stats)
 	{
+		set_time_limit(0);
 		$path = $this->get_absolute_path( $stats['path'] );
 
 		if ( ! empty($stats['url']) ) {
@@ -140,6 +141,13 @@ class VPBFiles
 				}
 				return 2;
 			} else {
+				$lstats = lstat( $tmpPath );
+				$md5 = md5_file( $tmpPath );
+				// check if the uploaded file is correct
+				if ( $lstats['size'] != $stats['size'] || $md5 != $stats['md5'] ) {
+					unlink( $tmpPath );
+					return -1;
+				}
 				if ( ! copy( $tmpPath, $path ) ) {
 					unlink( $tmpPath );
 					return -2;

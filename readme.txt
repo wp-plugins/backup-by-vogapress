@@ -80,6 +80,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.5.1 =
+* Added file restore validator
+
 = 0.5.0 =
 * Reduced memory required for data export
 * Fixed export of MySQL Trigger structure 
