@@ -80,6 +80,9 @@ Yes, we offer a free tier Personal backup service plan.  See the feature set on 
 
 == Changelog ==
 
+= 0.5.2 =
+* Fixed data import special character error
+
 = 0.5.1 =
 * Added file restore validator
 

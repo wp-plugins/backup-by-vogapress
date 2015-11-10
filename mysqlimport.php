@@ -66,7 +66,7 @@ class Mysqlimport
 			fseek( $this->fileHandler, $resume['offset'] );
 		}
 
-		while ( ($line = fgets( $this->fileHandler )) ) {
+		while ( ($line = fgets( $this->fileHandler, self::MAXLINESIZE )) ) {
 			if ( substr( $line, 0, 2 ) == '--' || trim( $line ) == '' ) {
 				continue;
 			}
@@ -76,7 +76,8 @@ class Mysqlimport
 			}
 
 			$query .= $line;
-			if ( substr( trim( $query ), -1 ) == ';' ) {
+			$lastChars = substr( rtrim( $query, " \t\0\x0B" ), -3 );
+			if ( preg_match( "/;\r{0,1}\n/", $lastChars ) ) {
 				$updates = $wpdb->query( $query );
 				if ( false === $updates ) {
 					throw new Exception( 'Error performing query \'<strong>' . $query . '\': ' . mysql_error() );
